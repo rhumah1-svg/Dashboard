@@ -919,7 +919,7 @@ export default function QualidaDashboard(){
         {/* activeClient = { id, name } — utiliser activeClient.id pour fetch Bubble */}
         <Route path="/ficheclient" element={
           <ErrorBoundary>
-            <FicheClient key={activeClient?.id||'no-client'} clientId={activeClient?.id} clientName={activeClient?.name}/>
+            <FicheClient key={activeClient?.name||'no-client'} clientId={activeClient?.name} clientName={activeClient?.name}/>
           </ErrorBoundary>
         }/>
       </Routes>
