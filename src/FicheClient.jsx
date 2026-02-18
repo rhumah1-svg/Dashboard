@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 // Passer à false pour brancher Bubble
-const USE_MOCK    = true;
+const USE_MOCK    = false;
 const DASH_SECRET = "qd_x9k2m7p4nz3";
 // URL Bubble : version-test → sera automatiquement la live quand déployé
 // car le proxy /api/bubble dans vite.config pointe vers portail-qualidal.com
@@ -403,9 +403,9 @@ function ProjetAccordeon({projet}){
       {open&&(
         <div style={{background:T.bg,borderTop:`1px solid ${T.border}`}}>
           {/* [4] INTERVENTIONS — liaison: intervention._project_attached === projet.id */}
-          {projet.interventions.length===0
+          {(projet.interventions||[]).length===0
             ?<div style={{padding:"20px 16px",fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucune intervention enregistrée</div>
-            :projet.interventions.map((interv,idx)=>{
+            :(projet.interventions||[]).map((interv,idx)=>{
               const jours=diffDays(interv.date);
               const dateColor=interv.status==="Planifié"?(jours<=7?T.rose:T.violet):T.textSoft;
               return (
@@ -419,7 +419,7 @@ function ProjetAccordeon({projet}){
                     {interv.status==="Planifié"&&jours!==null&&<span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>}
                   </span>
                   <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                    {interv.agents.map(a=><span key={a} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>{a}</span>)}
+                    {(interv.agents||[]).map(a=><span key={a} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>{a}</span>)}
                   </div>
                   <span style={{fontSize:11,color:T.textSoft}}>
                     <span style={{fontSize:10,marginRight:4}}>Rapport :</span>
@@ -505,7 +505,7 @@ function TabDevisClient({devis}){
       <div style={{maxHeight:560,overflowY:"auto"}}>
         {devis.length===0
           ?<div style={{padding:"32px",textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun devis pour ce client</div>
-          :devis.map((d,idx)=><DevisRow key={d.id} d={d} idx={idx}/>)
+          :(devis||[]).map((d,idx)=><DevisRow key={d.id} d={d} idx={idx}/>)
         }
       </div>
       <div style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"12px 16px",borderTop:`2px solid ${T.border}`,background:T.cardAlt}}>
@@ -586,7 +586,7 @@ export default function FicheClient({clientId, clientName}){
   const nbInterv  = projets.flatMap(p=>p.interventions).length;
   const nbPlanif  = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifié").length;
   const nbDevis   = devis.length;
-  const caByProjet= projets.map(p=>({name:p.name.split(" ")[0],ca:p.ca_total}));
+  const caByProjet= projets.map(p=>({name:(p.name||'').split(' ')[0]||'—',ca:p.ca_total}));
 
   const contactsRapides = contacts.filter(c=>["Principal","Secondaire","Contact sur site"].includes(c.type));
   // Prochaines = date dans le futur (ou aujourd'hui), triées par date
@@ -709,7 +709,7 @@ export default function FicheClient({clientId, clientName}){
               <div>
                 {projets.length===0
                   ?<div style={{padding:32,textAlign:"center",color:T.textSoft,fontSize:13,background:T.card,borderRadius:12,border:`1px solid ${T.border}`}}>Aucun projet pour ce client</div>
-                  :projets.map(p=><ProjetAccordeon key={p.id} projet={p}/>)
+                  :(projets||[]).map(p=><ProjetAccordeon key={p.id} projet={p}/>)
                 }
               </div>
             )}
@@ -723,7 +723,7 @@ export default function FicheClient({clientId, clientName}){
             {activeTab==="contacts"&&(
               <Card title="Contacts de l'entreprise" accent={T.teal}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  {contacts.map(ct=>{
+                  {(contacts||[]).map(ct=>{
                     const c=TYPE_CONTACT_COLOR[ct.type]||T.textSoft;
                     return (
                       <div key={ct.id} style={{padding:"14px 16px",borderRadius:10,border:`1px solid ${c}25`,background:`${c}08`}}>
@@ -801,7 +801,7 @@ export default function FicheClient({clientId, clientName}){
             <Card title="Prochaines interventions" accent={T.violet}>
               {prochaines.length===0
                 ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifiée</div>
-                :prochaines.map((i,idx)=>{
+                :(prochaines||[]).map((i,idx)=>{
                   const d=diffDays(i.date);
                   const dc=d<=3?T.rose:d<=7?T.amber:T.violet;
                   return (
@@ -812,7 +812,7 @@ export default function FicheClient({clientId, clientName}){
                       </div>
                       <div style={{fontSize:11,color:T.textSoft,marginBottom:4}}>{i.projet}</div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {i.agents.map(a=><span key={a} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>{a}</span>)}
+                        {(i.agents||[]).map(a=><span key={a} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>{a}</span>)}
                       </div>
                     </div>
                   );
@@ -825,7 +825,7 @@ export default function FicheClient({clientId, clientName}){
             <Card title="Contacts principaux" accent={T.teal}>
               {contactsRapides.length===0
                 ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucun contact principal</div>
-                :contactsRapides.map(ct=>{
+                :(contactsRapides||[]).map(ct=>{
                   const c=TYPE_CONTACT_COLOR[ct.type]||T.textSoft;
                   return (
                     <div key={ct.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
