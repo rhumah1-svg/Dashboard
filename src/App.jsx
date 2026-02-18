@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, useNavigate, useParams } from "react-rout
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const USE_MOCK = true;
+const USE_MOCK = false;
 const DASH_SECRET = "qd_x9k2m7p4nz3";
 
 // ─── THÈME ────────────────────────────────────────────────────────────────────
