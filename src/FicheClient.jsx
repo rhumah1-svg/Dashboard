@@ -33,9 +33,16 @@ const S_COLOR = {
   "Planifié":T.violet, "En cours":T.amber, "Terminé":T.sage, "Annulé":T.rose,
 };
 
+// ── OS_contact_type options (Bubble option set) ──────────────────────────────
+// Valeurs exactes : Principal / À mettre en copie / Contact sur site / Facturation / Autre - À préciser
 const TYPE_CONTACT_COLOR = {
-  Principal:T.indigo, Secondaire:T.teal,
-  "Mise en copie":T.amber, "Compta":T.violet,
+  "Principal":          T.indigo,
+  "À mettre en copie":  T.amber,
+  "Contact sur site":   T.teal,
+  "Facturation":        T.violet,
+  "Autre - À préciser": T.textSoft,
+  // Anciens labels mock (rétrocompat)
+  "Secondaire":T.teal, "Mise en copie":T.amber, "Compta":T.violet,
 };
 
 const HISTORIQUE_COLOR = { Appel:T.sage, Email:T.indigo, Réunion:T.violet, Note:T.amber };
@@ -157,129 +164,146 @@ const fmtDate = d => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 const diffDays= d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
 
 // ─── FETCH BUBBLE ─────────────────────────────────────────────────────────────
-// Toutes les requêtes passent par le proxy /api/bubble (vite.config)
-// clientName = champ "name" de la table Companies (ex: "IDEC")
+// Stratégie performance : 2 phases séquentielles
+//   Phase 1 : companies + projects (petit volume, rapide)
+//   Phase 2 : interventions + offers + items + contacts, filtrés en JS
+// Cache mémoire pour éviter de tout recharger si on revient sur la fiche
+let _cache = {};
 
-// Fetch toutes les pages sans contrainte (filtre côté JS)
 async function fetchAllPages(table){
   let results=[], cursor=0;
   while(true){
-    const res = await fetch(`/api/bubble?table=${table}&cursor=${cursor}&secret=${DASH_SECRET}`);
+    const res  = await fetch(`/api/bubble?table=${table}&cursor=${cursor}&secret=${DASH_SECRET}`);
     const data = await res.json();
     const page = data.response?.results||[];
-    results = results.concat(page);
+    results    = results.concat(page);
     if((data.response?.remaining??0)===0) break;
     cursor += page.length;
   }
   return results;
 }
 
-async function fetchPage(table, constraints, cursor=0){
-  const c = encodeURIComponent(JSON.stringify(constraints));
-  const res = await fetch(`/api/bubble?table=${table}&cursor=${cursor}&constraints=${c}&secret=${DASH_SECRET}`);
-  return res.json();
-}
+// Extrait une string depuis un champ adresse Bubble {address,lat,lng} ou string
+const extractAddr = v => {
+  if(!v) return "";
+  if(typeof v==="string") return v;
+  if(typeof v==="object") return v.address||v.name||"";
+  return "";
+};
 
-async function fetchAllFiltered(table, constraints){
-  let results=[], cursor=0;
-  while(true){
-    const data = await fetchPage(table, constraints, cursor);
-    const page = data.response?.results||[];
-    results = results.concat(page);
-    if((data.response?.remaining??0)===0) break;
-    cursor += page.length;
-  }
-  return results;
-}
-
-// ── Charge toutes les données d'un client depuis Bubble ──────────────────────
-async function fetchAll(){
-  // Même stratégie que le dashboard : tout charger, filtrer en JS
-  // Les contraintes Bubble sur les champs Thing (références) ne fonctionnent pas via l'API
-  let results={}, cursor=0;
-  const tables = ["companies","projects","interventions","offers_history_documents","items_devis","contact_projet"];
-  const fetches = tables.map(t => fetchAllPages(t));
-  const [rawCompanies, rawProjects, rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all(fetches);
-  return { rawCompanies, rawProjects, rawInterventions, rawOffers, rawItems, rawContacts };
-}
+// Normalise le type de contact (Option Set Bubble → string display)
+const normalizeType = v => {
+  if(!v) return "Autre - À préciser";
+  if(typeof v==="string") return v;
+  if(typeof v==="object") return v.display||v.name||"Autre - À préciser";
+  return String(v);
+};
 
 async function fetchClientData(clientName){
-  console.log("[FicheClient] fetch pour:", clientName);
+  console.log("[FC] fetch:", clientName);
 
-  // Charge tout depuis Bubble (même pattern que le dashboard)
-  const { rawCompanies, rawProjects, rawInterventions, rawOffers, rawItems, rawContacts } = await fetchAll();
+  // ── Phase 1 : tables légères ──────────────────────────────────────────────
+  const [rawCompanies, rawProjects] = await Promise.all([
+    _cache.companies  || fetchAllPages("companies").then(r=>{ _cache.companies=r; return r; }),
+    _cache.projects   || fetchAllPages("projects").then(r=>{ _cache.projects=r; return r; }),
+  ]);
 
-  // [1] Trouver la company par name — filtre JS
-  const company = rawCompanies.find(c => (c.name||"").toLowerCase() === clientName.toLowerCase());
-  console.log("[FicheClient] company:", company?._id, company?.name);
-  if(!company) return null;
+  // Trouver la company par name (filtre JS)
+  const company = rawCompanies.find(c=>(c.name||"").toLowerCase()===clientName.toLowerCase());
+  if(!company){ console.warn("[FC] company introuvable:", clientName); return null; }
   const companyId = company._id;
 
-  // [2] Projets du client — filtre JS sur _company_attached
-  const rawProjectsFiltered = rawProjects.filter(p => p._company_attached === companyId);
-  const projectIds = new Set(rawProjectsFiltered.map(p => p._id));
-  console.log("[FicheClient] projets:", rawProjectsFiltered.length, "sur", rawProjects.length);
+  // Projets du client
+  const rawProjectsF = rawProjects.filter(p=>p._company_attached===companyId);
+  const projectIds   = new Set(rawProjectsF.map(p=>p._id));
+  console.log("[FC] company:", companyId, "| projets:", rawProjectsF.length);
 
-  // Filtrer interventions, devis, items, contacts par projet du client
-  const rawInterv   = rawInterventions.filter(i => projectIds.has(i._project_attached));
-  const rawOffsF    = rawOffers.filter(o => projectIds.has(o._project_attached));
-  const rawItemsF   = rawItems.filter(i => projectIds.has(i._project_attached));
-  const rawContactsF= rawContacts.filter(c => projectIds.has(c.projet_contact_attache));
+  if(rawProjectsF.length===0) {
+    return {
+      client: {
+        id:company._id, name:company.name||clientName,
+        address:company.adresse_texte||"", phone:company.phone||"", email:company.email||"",
+        siret:company.siret||"", created:company["Created Date"]?.slice(0,10)||"",
+      },
+      projets:[], devis:[], contacts:[],
+    };
+  }
 
-  // Calcul montant HT par devis
-  const montantByOffer={};
+  // ── Phase 2 : tables volumineuses (parallèle) ─────────────────────────────
+  const [rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all([
+    _cache.interventions || fetchAllPages("interventions").then(r=>{ _cache.interventions=r; return r; }),
+    _cache.offers        || fetchAllPages("offers_history_documents").then(r=>{ _cache.offers=r; return r; }),
+    _cache.items         || fetchAllPages("items_devis").then(r=>{ _cache.items=r; return r; }),
+    _cache.contacts      || fetchAllPages("contact_projet").then(r=>{ _cache.contacts=r; return r; }),
+  ]);
+
+  // Filtres JS
+  const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
+  const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
+  const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
+  const rawContactsF = rawContacts.filter(c=>projectIds.has(c.projet_contact_attache));
+  console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts:", rawContactsF.length);
+
+  // Items groupés par devis (pour affichage accordéon dans onglet Devis)
+  const itemsByOffer = {};
   rawItemsF.forEach(item=>{
     const oid = item.offer_document_item;
-    const ht  = item["Total HT"]||item.Total_HT||item.total_ht||0;
+    if(!oid) return;
+    if(!itemsByOffer[oid]) itemsByOffer[oid]=[];
+    itemsByOffer[oid].push({
+      id:item._id,
+      designation:item.designation||"",
+      quantity:item.quantity||item.quantite||0,
+      unit:item.unit||item.OS_product_unit||"",
+      price_ht:item.price_HT||item.prix_unitaire||0,
+      total_ht:item["Total HT"]||item.Total_HT||0,
+    });
+  });
+
+  // Montant HT par devis
+  const montantByOffer={};
+  rawItemsF.forEach(item=>{
+    const oid=item.offer_document_item;
+    const ht=item["Total HT"]||item.Total_HT||0;
     if(oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
   });
 
-  // Calcul avancement par projet
-  const numByProject={}, denomByProject={};
+  // Avancement par projet
+  const numByProj={}, denomByProj={};
   rawItemsF.forEach(item=>{
     const pid=item._project_attached;
     const ht=item["Total HT"]||item.Total_HT||0;
     const isI=item.is_intervention===true||item["intervention?"]=== true;
-    if(pid){ denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+ht; }
+    if(pid){ denomByProj[pid]=(denomByProj[pid]||0)+ht; if(isI) numByProj[pid]=(numByProj[pid]||0)+ht; }
   });
 
   // Interventions groupées par projet
-  const intervByProject={};
-  rawInterv.forEach(i=>{
+  const intervByProj={};
+  rawIntervF.forEach(i=>{
     const pid=i._project_attached;
-    if(!intervByProject[pid]) intervByProject[pid]=[];
-    intervByProject[pid].push({
+    if(!intervByProj[pid]) intervByProj[pid]=[];
+    intervByProj[pid].push({
       id:i._id,
       name:i.name||"Sans nom",
-      status:i.intervention_status||i.OS_project_intervention_status||"—",
+      status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"—",
       date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
-      agents:[], rapport:"",
     });
   });
 
-  // Helper adresse Bubble (objet {address,lat,lng} ou string)
-  const extractAddr = v => {
-    if(!v) return "";
-    if(typeof v==="string") return v;
-    if(typeof v==="object") return v.address||v.name||"";
-    return "";
-  };
-
   // Normalisation projets
-  const projets = rawProjectsFiltered.map(p=>({
-    id:p._id,
-    name:p.name||"",
+  const projets = rawProjectsF.map(p=>({
+    id:p._id, name:p.name||"",
     status:p.OS_devis_status||"",
-    type:p.OS_prestations_type||"",
-    address: extractAddr(p.chantier_address||p.address),
-    ca_total: denomByProject[p._id]||0,
-    avancement: denomByProject[p._id]>0 ? Math.min((numByProject[p._id]||0)/denomByProject[p._id],1) : 0,
-    interventions: intervByProject[p._id]||[],
+    type:normalizeType(p.OS_prestations_type)||"",
+    address:extractAddr(p.chantier_address||p.address),
+    ca_total:denomByProj[p._id]||0,
+    avancement:denomByProj[p._id]>0?Math.min((numByProj[p._id]||0)/denomByProj[p._id],1):0,
+    interventions:intervByProj[p._id]||[],
   }));
 
   // Normalisation devis
-  const projectMap=Object.fromEntries(rawProjectsFiltered.map(p=>[p._id,p]));
-  const devis = rawOffsF.map(o=>({
+  const projectMap=Object.fromEntries(rawProjectsF.map(p=>[p._id,p]));
+  const devis = rawOffersF.map(o=>({
     id:o._id,
     offer_number:o.offer_number||o.devis_number||o._id,
     project_id:o._project_attached,
@@ -289,29 +313,31 @@ async function fetchClientData(clientName){
     date_validite:o.date_validite?o.date_validite.slice(0,10):null,
     montant_ht:montantByOffer[o._id]||0,
     is_active:o.is_active!==false,
+    items:itemsByOffer[o._id]||[],
   }));
 
   // Normalisation contacts
+  // Champs Bubble : Nom, role_contact_projet (OS_contact_type), email, phone
   const contacts = rawContactsF.map(c=>({
     id:c._id,
-    name:c.Nom||c.nom||"",
-    type:c.role_contact_projet||"Secondaire",
+    name:c.Nom||c.nom||c.name||"Sans nom",
+    type:normalizeType(c.role_contact_projet),
     email:c.email||"",
     phone:c.phone||c.telephone||"",
   }));
 
   // Normalisation company
+  // ── CHAMPS BUBBLE : adresse_texte / phone / email ─────────────────────────
   const client = {
-    id:company._id,
-    name:company.name||clientName,
-    address:extractAddr(company.address),
+    id:company._id, name:company.name||clientName,
+    address:company.adresse_texte||extractAddr(company.address)||"",
     phone:company.phone||"",
     email:company.email||"",
     siret:company.siret||"",
     created:company["Created Date"]?.slice(0,10)||"",
   };
 
-  console.log("[FicheClient] résultat:", projets.length, "projets,", devis.length, "devis,", contacts.length, "contacts");
+  console.log("[FC] OK ✓");
   return { client, projets, devis, contacts };
 }
 
@@ -414,49 +440,76 @@ function ProjetAccordeon({projet}){
 }
 
 // ─── ONGLET DEVIS ─────────────────────────────────────────────────────────────
-// [3] DEVIS — source: Offers_history_documents liés aux projets du client
-// Pour connecter à Bubble : fetch offers où _project_attached IN [ids projets du client]
+function DevisRow({d, idx}){
+  const [open,setOpen] = useState(false);
+  const exp=diffDays(d.date_validite);
+  const expColor=exp===null?T.textSoft:exp<=0?T.rose:exp<=7?T.amber:T.textSoft;
+  return (
+    <>
+      {/* Ligne devis */}
+      <div onClick={()=>d.items.length&&setOpen(o=>!o)}
+        style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"11px 16px",
+          borderBottom:open&&d.items.length?`none`:`1px solid ${T.border}`,
+          alignItems:"center",opacity:d.is_active?1:0.55,cursor:d.items.length?"pointer":"default",
+          background:open?T.indigoL:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s"}}
+        onMouseEnter={e=>{if(!open)e.currentTarget.style.background=T.cardAlt;}}
+        onMouseLeave={e=>{if(!open)e.currentTarget.style.background=open?T.indigoL:idx%2===0?T.card:T.cardAlt;}}>
+        <span style={{color:T.textSoft,fontSize:11,textAlign:"center"}}>{d.items.length?open?"▲":"▼":""}</span>
+        <span style={{fontSize:11,color:T.textSoft,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.offer_number}</span>
+        <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.project_name}</span>
+        <Badge label={d.os_devis_statut}/>
+        <span style={{fontSize:13,fontWeight:700,color:T.text,textAlign:"right"}}>{fmt(d.montant_ht)}</span>
+        <div>
+          <div style={{fontSize:11,color:T.textMed}}>{fmtDate(d.date_offre)}</div>
+          {d.date_validite&&<div style={{fontSize:10,color:expColor,fontWeight:exp!==null&&exp<=7?700:400}}>{exp<=0?"Expiré":`J-${exp}`}</div>}
+        </div>
+        <div style={{display:"flex",justifyContent:"center"}}>
+          <div style={{width:10,height:10,borderRadius:"50%",background:d.is_active?T.sage:T.border,border:`2px solid ${d.is_active?T.sage:T.borderMd}`}}/>
+        </div>
+      </div>
+      {/* Items accordéon */}
+      {open&&d.items.length>0&&(
+        <div style={{background:T.indigoL,borderBottom:`1px solid ${T.border}`,padding:"0 16px 10px 46px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"6px 0",marginBottom:4,borderBottom:`1px solid ${T.border}`}}>
+            {["Désignation","Qté","Unité","P.U. HT","Total HT"].map(h=>
+              <span key={h} style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{h}</span>
+            )}
+          </div>
+          {d.items.map(item=>(
+            <div key={item.id} style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"5px 0",borderBottom:`1px solid ${T.border}44`}}>
+              <span style={{fontSize:12,color:T.text}}>{item.designation}</span>
+              <span style={{fontSize:12,color:T.textMed,textAlign:"right"}}>{item.quantity}</span>
+              <span style={{fontSize:12,color:T.textMed}}>{item.unit}</span>
+              <span style={{fontSize:12,color:T.textMed,textAlign:"right"}}>{fmt(item.price_ht)}</span>
+              <span style={{fontSize:12,fontWeight:600,color:T.indigo,textAlign:"right"}}>{fmt(item.total_ht)}</span>
+            </div>
+          ))}
+          <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
+            <span style={{fontSize:13,fontWeight:700,color:T.indigo}}>{fmt(d.montant_ht)} HT</span>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function TabDevisClient({devis}){
   const total = devis.filter(d=>d.is_active).reduce((s,d)=>s+(d.montant_ht||0),0);
   return (
     <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
-      {/* En-tête tableau */}
-      <div style={{display:"grid",gridTemplateColumns:"160px 1fr 165px 105px 105px 60px",gap:8,padding:"10px 20px",background:T.cardAlt,borderBottom:`2px solid ${T.border}`}}>
-        {["Référence","Projet","Statut","Montant HT","Date offre","Actif"].map(h=>(
+      <div style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"10px 16px",background:T.cardAlt,borderBottom:`2px solid ${T.border}`}}>
+        {["","Référence","Projet","Statut","Montant HT","Date","Actif"].map(h=>(
           <span key={h} style={{fontSize:11,color:T.textSoft,fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase"}}>{h}</span>
         ))}
       </div>
-      {/* Lignes */}
-      <div style={{maxHeight:420,overflowY:"auto"}}>
+      <div style={{maxHeight:560,overflowY:"auto"}}>
         {devis.length===0
           ?<div style={{padding:"32px",textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun devis pour ce client</div>
-          :devis.map((d,idx)=>{
-            const exp=diffDays(d.date_validite);
-            const expColor=exp===null?T.textSoft:exp<=0?T.rose:exp<=7?T.amber:T.textSoft;
-            return (
-              <div key={d.id}
-                style={{display:"grid",gridTemplateColumns:"160px 1fr 165px 105px 105px 60px",gap:8,padding:"11px 20px",borderBottom:`1px solid ${T.border}`,alignItems:"center",background:idx%2===0?T.card:T.cardAlt,opacity:d.is_active?1:0.55,transition:"background 0.1s"}}
-                onMouseEnter={e=>e.currentTarget.style.background=T.indigoL}
-                onMouseLeave={e=>e.currentTarget.style.background=idx%2===0?T.card:T.cardAlt}>
-                <span style={{fontSize:11,color:T.textSoft,fontFamily:"monospace"}}>{d.offer_number}</span>
-                <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.project_name}</span>
-                <Badge label={d.os_devis_statut}/>
-                <span style={{fontSize:13,fontWeight:700,color:T.text,textAlign:"right"}}>{fmt(d.montant_ht)}</span>
-                <div>
-                  <div style={{fontSize:11,color:T.textMed}}>{fmtDate(d.date_offre)}</div>
-                  {d.date_validite&&<div style={{fontSize:10,color:expColor,fontWeight:exp!==null&&exp<=7?700:400}}>{exp===null?"":exp<=0?"Expiré":`Exp. J-${exp}`}</div>}
-                </div>
-                <div style={{display:"flex",justifyContent:"center"}}>
-                  <div style={{width:10,height:10,borderRadius:"50%",background:d.is_active?T.sage:T.border,border:`2px solid ${d.is_active?T.sage:T.borderMd}`}}/>
-                </div>
-              </div>
-            );
-          })
+          :devis.map((d,idx)=><DevisRow key={d.id} d={d} idx={idx}/>)
         }
       </div>
-      {/* Total */}
-      <div style={{display:"grid",gridTemplateColumns:"160px 1fr 165px 105px 105px 60px",gap:8,padding:"12px 20px",borderTop:`2px solid ${T.border}`,background:T.cardAlt}}>
-        <span style={{gridColumn:"1/4",fontSize:12,color:T.textSoft}}>{devis.filter(d=>d.is_active).length} devis actifs sur {devis.length}</span>
+      <div style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"12px 16px",borderTop:`2px solid ${T.border}`,background:T.cardAlt}}>
+        <span style={{gridColumn:"1/5",fontSize:12,color:T.textSoft}}>{devis.filter(d=>d.is_active).length} devis actifs sur {devis.length}</span>
         <span style={{fontSize:15,fontWeight:800,color:T.indigo,textAlign:"right"}}>{fmt(total)}</span>
         <span/><span/>
       </div>
@@ -535,9 +588,14 @@ export default function FicheClient({clientId, clientName}){
   const nbDevis   = devis.length;
   const caByProjet= projets.map(p=>({name:p.name.split(" ")[0],ca:p.ca_total}));
 
-  const contactsRapides = contacts.filter(c=>["Principal","Secondaire"].includes(c.type));
+  const contactsRapides = contacts.filter(c=>["Principal","Secondaire","Contact sur site"].includes(c.type));
+  // Prochaines = date dans le futur (ou aujourd'hui), triées par date
+  const today = new Date(); today.setHours(0,0,0,0);
   const prochaines = projets
-    .flatMap(p=>p.interventions.filter(i=>i.status==="Planifié").map(i=>({...i,projet:p.name})))
+    .flatMap(p=>p.interventions
+      .filter(i=> i.date && new Date(i.date) >= today)
+      .map(i=>({...i, projet:p.name}))
+    )
     .sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   const addHistorique = entry => setHistorique(h=>[{id:`h${Date.now()}`,...entry},...h]);
