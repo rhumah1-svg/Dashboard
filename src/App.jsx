@@ -12,7 +12,7 @@ import {
 } from "recharts";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const USE_MOCK = true; // ← false pour brancher Bubble
+const USE_MOCK = false; // ← false pour brancher Bubble
 const BUBBLE_BASE = "https://portail-qualidal.com/version-test/api/1.1";
 const BUBBLE_TOKEN = "Bearer test_f92090a3c34a5a84387182092bf29434";
 
