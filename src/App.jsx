@@ -632,21 +632,128 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
   );
 }
 
+// ─── SEARCHBOX CLIENT (dans le header) ───────────────────────────────────────
+// Debounce 300ms + recherche locale sur les companies déjà chargées
+// → pas de requête réseau à chaque frappe, performant même avec 1000 clients
+function ClientSearchBox({companies, onSelect}){
+  const [query, setQuery]     = useState("");
+  const [results, setResults] = useState([]);
+  const [open, setOpen]       = useState(false);
+  const [focused, setFocused] = useState(false);
+  const ref    = useRef();
+  const timer  = useRef();
+
+  // Fermer si clic extérieur
+  useEffect(()=>{
+    const h = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  },[]);
+
+  // Debounce 300ms — recherche sur nom (insensible casse + accents)
+  const handleChange = e => {
+    const q = e.target.value;
+    setQuery(q);
+    clearTimeout(timer.current);
+    if(!q.trim()){ setResults([]); setOpen(false); return; }
+    timer.current = setTimeout(()=>{
+      const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+      const nq   = norm(q);
+      const hits = companies
+        .filter(c => norm(c.name||"").includes(nq))
+        .slice(0, 8); // max 8 résultats affichés
+      setResults(hits);
+      setOpen(hits.length > 0);
+    }, 300);
+  };
+
+  const handleSelect = company => {
+    setQuery(company.name);
+    setOpen(false);
+    onSelect(company);
+  };
+
+  const handleClear = () => { setQuery(""); setResults([]); setOpen(false); };
+
+  return (
+    <div ref={ref} style={{position:"relative"}}>
+      {/* Champ de recherche discret */}
+      <div style={{
+        display:"flex", alignItems:"center", gap:6,
+        padding:"6px 12px",
+        background: focused ? T.card : T.bg,
+        border:`1.5px solid ${focused ? T.indigo : T.border}`,
+        borderRadius:8, transition:"all 0.15s", width:220,
+      }}>
+        <span style={{fontSize:13, color:T.textSoft, flexShrink:0}}>⌕</span>
+        <input
+          value={query}
+          onChange={handleChange}
+          onFocus={()=>setFocused(true)}
+          onBlur={()=>setFocused(false)}
+          placeholder="Rechercher un client…"
+          style={{
+            border:"none", outline:"none", background:"transparent",
+            color:T.text, fontSize:12, fontFamily:"inherit", flex:1, width:"100%"
+          }}
+        />
+        {query && (
+          <span onClick={handleClear}
+            style={{cursor:"pointer",fontSize:13,color:T.textSoft,flexShrink:0,lineHeight:1}}>×</span>
+        )}
+      </div>
+
+      {/* Dropdown résultats */}
+      {open && (
+        <div style={{
+          position:"absolute", top:"calc(100% + 6px)", left:0, right:0,
+          background:T.card, border:`1px solid ${T.border}`, borderRadius:10,
+          boxShadow:"0 12px 32px rgba(0,0,0,0.12)", zIndex:500, overflow:"hidden",
+        }}>
+          {results.map((c,i) => (
+            <div key={c.id} onMouseDown={()=>handleSelect(c)}
+              style={{
+                padding:"9px 14px", cursor:"pointer", fontSize:12,
+                color:T.text, fontWeight:500,
+                borderBottom: i < results.length-1 ? `1px solid ${T.border}` : "none",
+                background:T.card, transition:"background 0.1s",
+              }}
+              onMouseEnter={e=>e.currentTarget.style.background=T.indigoL}
+              onMouseLeave={e=>e.currentTarget.style.background=T.card}>
+              <span style={{fontWeight:700}}>{c.name}</span>
+            </div>
+          ))}
+          <div style={{padding:"6px 14px",fontSize:10,color:T.textSoft,background:T.cardAlt,borderTop:`1px solid ${T.border}`}}>
+            {results.length} résultat{results.length>1?"s":""} · Tapez pour affiner
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── HEADER PARTAGÉ ───────────────────────────────────────────────────────────
-function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout}){
+function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, companies, onSelectClient}){
   const navigate = useNavigate();
   const location = useLocation();
-  const isClients = location.pathname === "/ficheclient";
+  const isClients  = location.pathname === "/ficheclient";
   const isDashboard = !isClients;
 
-  const handleNavClick = (key) => {
-    if (key === "clients") { navigate("/ficheclient"); }
-    else { if (isClients) navigate("/"); setTab(key); }
+  const handleNavClick = key => {
+    if(key==="clients"){ navigate("/ficheclient"); }
+    else { if(isClients) navigate("/"); setTab(key); }
+  };
+
+  // Quand on sélectionne un client dans la searchbox → nav vers ficheclient avec l'id
+  const handleSelectClient = company => {
+    onSelectClient(company);
+    navigate("/ficheclient");
   };
 
   return (
     <div style={{borderBottom:`1px solid ${T.border}`,padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",background:T.card,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
-      <div style={{display:"flex",alignItems:"center",gap:24}}>
+      <div style={{display:"flex",alignItems:"center",gap:20}}>
+        {/* Logo */}
         <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>{navigate("/");setTab("devis");}}>
           <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.indigo},${T.teal})`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px ${T.indigo}44`}}>
             <span style={{fontSize:16,fontWeight:900,color:"#fff"}}>Q</span>
@@ -656,6 +763,8 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout}){
             <div style={{fontSize:9,color:T.textSoft,letterSpacing:"0.1em",fontWeight:600}}>CRM</div>
           </div>
         </div>
+
+        {/* Nav tabs */}
         <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
           {[["devis","📋 Devis"],["interventions","🔧 Interventions"],["clients","🏢 Clients"]].map(([key,label])=>{
             const active = key==="clients" ? isClients : (isDashboard && tab===key);
@@ -669,7 +778,14 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout}){
             );
           })}
         </div>
+
+        {/* ── SEARCHBOX CLIENT — visible sur toutes les pages ── */}
+        {/* companies vient de data.projects → _company_attached (dédupliqué dans App) */}
+        {companies.length > 0 && (
+          <ClientSearchBox companies={companies} onSelect={handleSelectClient}/>
+        )}
       </div>
+
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         {selectedName&&isDashboard&&(
           <div style={{display:"flex",alignItems:"center",gap:7,padding:"6px 13px",background:T.indigoL,border:`1px solid ${T.indigo}30`,borderRadius:20}}>
@@ -691,28 +807,41 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout}){
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function QualidaDashboard(){
-  const [auth, setAuth] = useState(()=> sessionStorage.getItem("qd_auth")==="1");
-  const [tab,setTab]=useState("devis");
-  const [data,setData]=useState(null);
-  const [loading,setLoading]=useState(true);
-  const [selectedCompany,setSelectedCompany]=useState(null);
+  const [auth, setAuth]               = useState(()=> sessionStorage.getItem("qd_auth")==="1");
+  const [tab, setTab]                 = useState("devis");
+  const [data, setData]               = useState(null);
+  const [loading, setLoading]         = useState(true);
+  const [selectedCompany, setSelectedCompany] = useState(null);
+  // Client actif dans FicheClient (objet {id, name})
+  const [activeClient, setActiveClient] = useState(null);
 
   const handleLogout = () => { sessionStorage.removeItem("qd_auth"); setAuth(false); };
 
   useEffect(()=>{
-    if(auth) fetchAll().then(d=>{setData(d);setLoading(false);});
+    if(auth) fetchAll().then(d=>{ setData(d); setLoading(false); });
   },[auth]);
 
-  const selectedName=useMemo(()=>{
-    if(!selectedCompany||!data)return null;
-    return [...data.offers.map(o=>o._project_attached?._company_attached),...data.interventions.map(i=>i._project_attached?._company_attached)]
-      .find(c=>c?.id===selectedCompany)?.name;
-  },[selectedCompany,data]);
+  // Liste dédupliquée de toutes les companies pour la searchbox
+  // ── SOURCE: data.projects → _company_attached ─────────────────────────────
+  // Pour Bubble : remplacer par fetchAllPages("companies") directement
+  const allCompanies = useMemo(()=>{
+    if(!data) return [];
+    const seen = new Set();
+    const list = [];
+    [...data.offers, ...data.interventions].forEach(item => {
+      const c = item._project_attached?._company_attached;
+      if(c?.id && !seen.has(c.id)){ seen.add(c.id); list.push(c); }
+    });
+    return list.sort((a,b)=>a.name.localeCompare(b.name));
+  },[data]);
 
-  // ── Pas connecté → écran login
+  const selectedName = useMemo(()=>{
+    if(!selectedCompany||!data) return null;
+    return allCompanies.find(c=>c?.id===selectedCompany)?.name;
+  },[selectedCompany, allCompanies, data]);
+
   if(!auth) return <Login onLogin={()=>setAuth(true)}/>;
 
-  // ── Chargement données
   if(loading) return (
     <div style={{background:T.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center"}}>
@@ -740,7 +869,13 @@ export default function QualidaDashboard(){
         input::placeholder{color:${T.textSoft};}
       `}</style>
 
-      <AppHeader tab={tab} setTab={setTab} selectedName={selectedName} onClearCompany={()=>setSelectedCompany(null)} onLogout={handleLogout}/>
+      <AppHeader
+        tab={tab} setTab={setTab}
+        selectedName={selectedName} onClearCompany={()=>setSelectedCompany(null)}
+        onLogout={handleLogout}
+        companies={allCompanies}
+        onSelectClient={c=>setActiveClient(c)}
+      />
 
       <Routes>
         <Route path="/" element={
@@ -751,7 +886,9 @@ export default function QualidaDashboard(){
             }
           </div>
         }/>
-        <Route path="/ficheclient" element={<FicheClient/>}/>
+        {/* FicheClient reçoit l'activeClient sélectionné via searchbox */}
+        {/* activeClient = { id, name } — utiliser activeClient.id pour fetch Bubble */}
+        <Route path="/ficheclient" element={<FicheClient clientId={activeClient?.id} clientName={activeClient?.name}/>}/>
       </Routes>
 
       <div style={{padding:"14px 28px",fontSize:11,color:T.textSoft,textAlign:"center",borderTop:`1px solid ${T.border}`,background:T.card,fontWeight:500}}>
