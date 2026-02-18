@@ -241,8 +241,18 @@ async function fetchClientData(clientName){
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
   const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
-  const rawContactsF = rawContacts.filter(c=>c._company_attached===companyId);
-  console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts:", rawContactsF.length);
+  // Contacts : filtre par _company_attached (Bubble retourne l'_id en string)
+  // Log pour debug : voir la structure réelle du premier contact
+  if(rawContacts.length>0) console.log("[FC] contact sample:", JSON.stringify(rawContacts[0]).slice(0,200));
+  const rawContactsF = rawContacts.filter(c=>{
+    const ca = c._company_attached;
+    if(!ca) return false;
+    // Bubble peut retourner l'id direct ou un objet
+    if(typeof ca==="string") return ca===companyId;
+    if(typeof ca==="object") return ca._id===companyId || ca.id===companyId;
+    return false;
+  });
+  console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts raw:", rawContacts.length, "| filtrés:", rawContactsF.length);
 
   // Items groupés par devis (pour affichage accordéon dans onglet Devis)
   const itemsByOffer = {};
@@ -287,6 +297,9 @@ async function fetchClientData(clientName){
       name:i.name||"Sans nom",
       status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"—",
       date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
+      // Champs Bubble à vérifier selon ton modèle :
+      agent:i.agent_name||i.intervenant||i.user_agent||"",
+      rapport:i.rapport_name||i.redacteur||i.user_rapport||"",
     });
   });
 
@@ -557,7 +570,13 @@ export default function FicheClient({clientId, clientName}){
   const [fetchLoading, setFetchLoading] = useState(!USE_MOCK && !!clientId);
   const [fetchError,   setFetchError]   = useState(null);
 
-  const [historique,setHistorique] = useState(MOCK_HISTORIQUE_INIT);
+  const [historique,setHistorique] = useState(()=>{
+    // Persistance locale : l'historique survit aux navigations (pas lié à Bubble)
+    try {
+      const saved = sessionStorage.getItem(`histo_${clientId||'default'}`);
+      return saved ? JSON.parse(saved) : MOCK_HISTORIQUE_INIT;
+    } catch(e){ return MOCK_HISTORIQUE_INIT; }
+  });
   const [showModal,setShowModal]   = useState(false);
   const [activeTab,setActiveTab]   = useState("projets");
 
@@ -598,7 +617,11 @@ export default function FicheClient({clientId, clientName}){
     )
     .sort((a,b)=>new Date(a.date)-new Date(b.date));
 
-  const addHistorique = entry => setHistorique(h=>[{id:`h${Date.now()}`,...entry},...h]);
+  const addHistorique = entry => setHistorique(h=>{
+    const next = [{id:`h${Date.now()}`,...entry},...h];
+    try { sessionStorage.setItem(`histo_${clientId||'default'}`, JSON.stringify(next)); } catch(e){}
+    return next;
+  });
 
   const TABS = [
     ["projets",   "📁 Projets & Interventions"],
@@ -798,27 +821,30 @@ export default function FicheClient({clientId, clientName}){
 
             {/* PROCHAINES INTERVENTIONS */}
             {/* [4] interventions.status === "Planifié" triées par date */}
-            <Card title="Prochaines interventions" accent={T.violet}>
-              {prochaines.length===0
-                ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifiée</div>
-                :(prochaines||[]).map((i,idx)=>{
-                  const d=diffDays(i.date);
-                  const dc=d<=3?T.rose:d<=7?T.amber:T.violet;
-                  return (
-                    <div key={i.id} style={{padding:"10px 0",borderBottom:idx<prochaines.length-1?`1px solid ${T.border}`:"none"}}>
-                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:4}}>
-                        <span style={{fontSize:12,fontWeight:700,color:T.text}}>{i.name}</span>
-                        <span style={{fontSize:11,fontWeight:700,color:dc}}>{d<=0?"Auj.":`J-${d}`}</span>
+            <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)",flex:1,display:"flex",flexDirection:"column"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 20px",borderBottom:`1px solid ${T.border}`,background:T.cardAlt,borderLeft:`4px solid ${T.violet}`}}>
+                <span style={{fontSize:11,fontWeight:700,color:T.textMed,letterSpacing:"0.07em",textTransform:"uppercase"}}>Prochaines interventions</span>
+              </div>
+              <div style={{padding:20,flex:1,overflowY:"auto"}}>
+                {(prochaines||[]).length===0
+                  ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifiée</div>
+                  :(prochaines||[]).map((i,idx)=>{
+                    const d=diffDays(i.date);
+                    const dc=d!==null&&d<=3?T.rose:d!==null&&d<=7?T.amber:T.violet;
+                    return (
+                      <div key={i.id} style={{padding:"10px 0",borderBottom:idx<prochaines.length-1?`1px solid ${T.border}`:"none"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:3}}>
+                          <span style={{fontSize:12,fontWeight:700,color:T.text,flex:1,paddingRight:8}}>{i.name}</span>
+                          <span style={{fontSize:11,fontWeight:700,color:dc,flexShrink:0}}>{d===null?"":d<=0?"Auj.":`J-${d}`}</span>
+                        </div>
+                        <div style={{fontSize:11,color:T.textSoft,marginBottom:4}}>{i.projet}</div>
+                        {i.agent&&<div style={{fontSize:11,color:T.teal,fontWeight:600}}>👷 {i.agent}</div>}
                       </div>
-                      <div style={{fontSize:11,color:T.textSoft,marginBottom:4}}>{i.projet}</div>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {(i.agents||[]).map(a=><span key={a} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>{a}</span>)}
-                      </div>
-                    </div>
-                  );
-                })
-              }
-            </Card>
+                    );
+                  })
+                }
+              </div>
+            </div>
 
 
 
