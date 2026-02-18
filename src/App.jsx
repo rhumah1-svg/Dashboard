@@ -1,8 +1,37 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, Component } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import FicheClient from './FicheClient';
 import Login from './Login';
+
+// ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
+// Capture les crashes React et affiche l'erreur exacte au lieu d'un écran blanc
+class ErrorBoundary extends Component {
+  constructor(props){ super(props); this.state={error:null}; }
+  static getDerivedStateFromError(e){ return {error:e}; }
+  componentDidCatch(e,info){ console.error("FicheClient crash:", e, info); }
+  render(){
+    if(this.state.error){
+      return (
+        <div style={{padding:40,maxWidth:800,margin:"40px auto",fontFamily:"monospace"}}>
+          <div style={{background:"#FAEDF1",border:"1px solid #BF506A",borderRadius:12,padding:24}}>
+            <div style={{fontSize:16,fontWeight:800,color:"#BF506A",marginBottom:12}}>
+              💥 Erreur React — copie ce message et envoie-le en chat
+            </div>
+            <pre style={{fontSize:12,color:"#1A2640",whiteSpace:"pre-wrap",wordBreak:"break-all",background:"#fff",padding:16,borderRadius:8,border:"1px solid #E3E9F2"}}>
+              {this.state.error?.message}{"\n\n"}{this.state.error?.stack?.slice(0,600)}
+            </pre>
+            <button onClick={()=>this.setState({error:null})}
+              style={{marginTop:16,padding:"8px 16px",background:"#BF506A",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontWeight:700}}>
+              Réessayer
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const USE_MOCK = false;
@@ -888,7 +917,11 @@ export default function QualidaDashboard(){
         }/>
         {/* FicheClient reçoit l'activeClient sélectionné via searchbox */}
         {/* activeClient = { id, name } — utiliser activeClient.id pour fetch Bubble */}
-        <Route path="/ficheclient" element={<FicheClient key={activeClient?.id||'no-client'} clientId={activeClient?.id} clientName={activeClient?.name}/>}/>
+        <Route path="/ficheclient" element={
+          <ErrorBoundary>
+            <FicheClient key={activeClient?.id||'no-client'} clientId={activeClient?.id} clientName={activeClient?.name}/>
+          </ErrorBoundary>
+        }/>
       </Routes>
 
       <div style={{padding:"14px 28px",fontSize:11,color:T.textSoft,textAlign:"center",borderTop:`1px solid ${T.border}`,background:T.card,fontWeight:500}}>
