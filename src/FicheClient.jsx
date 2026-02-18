@@ -160,6 +160,20 @@ const diffDays= d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
 // Toutes les requêtes passent par le proxy /api/bubble (vite.config)
 // clientName = champ "name" de la table Companies (ex: "IDEC")
 
+// Fetch toutes les pages sans contrainte (filtre côté JS)
+async function fetchAllPages(table){
+  let results=[], cursor=0;
+  while(true){
+    const res = await fetch(`/api/bubble?table=${table}&cursor=${cursor}&secret=${DASH_SECRET}`);
+    const data = await res.json();
+    const page = data.response?.results||[];
+    results = results.concat(page);
+    if((data.response?.remaining??0)===0) break;
+    cursor += page.length;
+  }
+  return results;
+}
+
 async function fetchPage(table, constraints, cursor=0){
   const c = encodeURIComponent(JSON.stringify(constraints));
   const res = await fetch(`/api/bubble?table=${table}&cursor=${cursor}&constraints=${c}&secret=${DASH_SECRET}`);
@@ -179,69 +193,59 @@ async function fetchAllFiltered(table, constraints){
 }
 
 // ── Charge toutes les données d'un client depuis Bubble ──────────────────────
+async function fetchAll(){
+  // Même stratégie que le dashboard : tout charger, filtrer en JS
+  // Les contraintes Bubble sur les champs Thing (références) ne fonctionnent pas via l'API
+  let results={}, cursor=0;
+  const tables = ["companies","projects","interventions","offers_history_documents","items_devis","contact_projet"];
+  const fetches = tables.map(t => fetchAllPages(t));
+  const [rawCompanies, rawProjects, rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all(fetches);
+  return { rawCompanies, rawProjects, rawInterventions, rawOffers, rawItems, rawContacts };
+}
+
 async function fetchClientData(clientName){
-  // [1] Company — filtre: name = clientName
-  console.log("[FicheClient] fetch company:", clientName);
-  const rawCompanies = await fetchAllFiltered("companies",[
-    {key:"name", constraint_type:"equals", value: clientName}
-  ]);
-  const company = rawCompanies[0] || null;
-  console.log("[FicheClient] company trouvée:", company?._id, company?.name);
+  console.log("[FicheClient] fetch pour:", clientName);
+
+  // Charge tout depuis Bubble (même pattern que le dashboard)
+  const { rawCompanies, rawProjects, rawInterventions, rawOffers, rawItems, rawContacts } = await fetchAll();
+
+  // [1] Trouver la company par name — filtre JS
+  const company = rawCompanies.find(c => (c.name||"").toLowerCase() === clientName.toLowerCase());
+  console.log("[FicheClient] company:", company?._id, company?.name);
   if(!company) return null;
   const companyId = company._id;
 
-  // [2] Projets — filtre: _company_attached = companyId
-  // Bubble: champ Thing ref → constraint_type "equals" avec l_id de la company
-  console.log("[FicheClient] fetch projets pour companyId:", companyId);
-  const rawProjects = await fetchAllFiltered("projects",[
-    {key:"_company_attached", constraint_type:"equals", value: companyId}
-  ]);
-  console.log("[FicheClient] projets trouvés:", rawProjects.length);
-  const projectIds = rawProjects.map(p=>p._id);
+  // [2] Projets du client — filtre JS sur _company_attached
+  const rawProjectsFiltered = rawProjects.filter(p => p._company_attached === companyId);
+  const projectIds = new Set(rawProjectsFiltered.map(p => p._id));
+  console.log("[FicheClient] projets:", rawProjectsFiltered.length, "sur", rawProjects.length);
 
-  // Fetch parallèle : interventions + devis + items + contacts
-  const [rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all([
-    // [4] Interventions — filtre: _project_attached IN projectIds
-    projectIds.length ? fetchAllFiltered("interventions",[
-      {key:"_project_attached", constraint_type:"in", value: projectIds}
-    ]) : Promise.resolve([]),
+  // Filtrer interventions, devis, items, contacts par projet du client
+  const rawInterv   = rawInterventions.filter(i => projectIds.has(i._project_attached));
+  const rawOffsF    = rawOffers.filter(o => projectIds.has(o._project_attached));
+  const rawItemsF   = rawItems.filter(i => projectIds.has(i._project_attached));
+  const rawContactsF= rawContacts.filter(c => projectIds.has(c.projet_contact_attache));
 
-    // [3] Devis — filtre: _project_attached IN projectIds
-    projectIds.length ? fetchAllFiltered("offers_history_documents",[
-      {key:"_project_attached", constraint_type:"in", value: projectIds}
-    ]) : Promise.resolve([]),
-
-    // Items pour calculer montant HT par devis
-    projectIds.length ? fetchAllFiltered("items_devis",[
-      {key:"_project_attached", constraint_type:"in", value: projectIds}
-    ]) : Promise.resolve([]),
-
-    // [5] Contacts projet — filtre: projet_contact_attache IN projectIds
-    projectIds.length ? fetchAllFiltered("contact_projet",[
-      {key:"projet_contact_attache", constraint_type:"in", value: projectIds}
-    ]) : Promise.resolve([]),
-  ]);
-
-  // ── Calcul montant HT par devis depuis items ──────────────────────────────
+  // Calcul montant HT par devis
   const montantByOffer={};
-  rawItems.forEach(item=>{
+  rawItemsF.forEach(item=>{
     const oid = item.offer_document_item;
     const ht  = item["Total HT"]||item.Total_HT||item.total_ht||0;
     if(oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
   });
 
-  // ── Calcul avancement par projet (items intervention / items total) ────────
+  // Calcul avancement par projet
   const numByProject={}, denomByProject={};
-  rawItems.forEach(item=>{
+  rawItemsF.forEach(item=>{
     const pid=item._project_attached;
     const ht=item["Total HT"]||item.Total_HT||0;
     const isI=item.is_intervention===true||item["intervention?"]=== true;
     if(pid){ denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+ht; }
   });
 
-  // ── Normalisation interventions par projet ────────────────────────────────
+  // Interventions groupées par projet
   const intervByProject={};
-  rawInterventions.forEach(i=>{
+  rawInterv.forEach(i=>{
     const pid=i._project_attached;
     if(!intervByProject[pid]) intervByProject[pid]=[];
     intervByProject[pid].push({
@@ -249,26 +253,33 @@ async function fetchClientData(clientName){
       name:i.name||"Sans nom",
       status:i.intervention_status||i.OS_project_intervention_status||"—",
       date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
-      agents:[],   // à mapper si tu as un champ agents dans Bubble
-      rapport:"",  // idem
+      agents:[], rapport:"",
     });
   });
 
-  // ── Normalisation projets ─────────────────────────────────────────────────
-  const projets = rawProjects.map(p=>({
+  // Helper adresse Bubble (objet {address,lat,lng} ou string)
+  const extractAddr = v => {
+    if(!v) return "";
+    if(typeof v==="string") return v;
+    if(typeof v==="object") return v.address||v.name||"";
+    return "";
+  };
+
+  // Normalisation projets
+  const projets = rawProjectsFiltered.map(p=>({
     id:p._id,
     name:p.name||"",
     status:p.OS_devis_status||"",
     type:p.OS_prestations_type||"",
-    address:(()=>{ const a=p.chantier_address||p.address; if(!a) return ""; if(typeof a==="string") return a; return a.address||a.name||""; })(),
+    address: extractAddr(p.chantier_address||p.address),
     ca_total: denomByProject[p._id]||0,
     avancement: denomByProject[p._id]>0 ? Math.min((numByProject[p._id]||0)/denomByProject[p._id],1) : 0,
     interventions: intervByProject[p._id]||[],
   }));
 
-  // ── Normalisation devis ───────────────────────────────────────────────────
-  const projectMap=Object.fromEntries(rawProjects.map(p=>[p._id,p]));
-  const devis = rawOffers.map(o=>({
+  // Normalisation devis
+  const projectMap=Object.fromEntries(rawProjectsFiltered.map(p=>[p._id,p]));
+  const devis = rawOffsF.map(o=>({
     id:o._id,
     offer_number:o.offer_number||o.devis_number||o._id,
     project_id:o._project_attached,
@@ -280,8 +291,8 @@ async function fetchClientData(clientName){
     is_active:o.is_active!==false,
   }));
 
-  // ── Normalisation contacts ────────────────────────────────────────────────
-  const contacts = rawContacts.map(c=>({
+  // Normalisation contacts
+  const contacts = rawContactsF.map(c=>({
     id:c._id,
     name:c.Nom||c.nom||"",
     type:c.role_contact_projet||"Secondaire",
@@ -289,17 +300,18 @@ async function fetchClientData(clientName){
     phone:c.phone||c.telephone||"",
   }));
 
-  // ── Normalisation company ─────────────────────────────────────────────────
+  // Normalisation company
   const client = {
     id:company._id,
     name:company.name||clientName,
-    address:(()=>{ const a=company.address; if(!a) return ""; if(typeof a==="string") return a; return a.address||a.name||""; })(),
+    address:extractAddr(company.address),
     phone:company.phone||"",
     email:company.email||"",
     siret:company.siret||"",
     created:company["Created Date"]?.slice(0,10)||"",
   };
 
+  console.log("[FicheClient] résultat:", projets.length, "projets,", devis.length, "devis,", contacts.length, "contacts");
   return { client, projets, devis, contacts };
 }
 
