@@ -118,26 +118,7 @@ const MOCK_HISTORIQUE={
 };
 
 // ─── FETCH BUBBLE ─────────────────────────────────────────────────────────────
-async function fetchAllPages(table){
-  let results=[],cursor=0;
-  while(true){
-    const res=await fetch(`/api/bubble?table=${table}&cursor=${cursor}&secret=${DASH_SECRET}`);
-    const data=await res.json();
-    const page=data.response?.results||[];
-    results=results.concat(page);
-    if((data.response?.remaining??0)===0)break;
-    cursor+=page.length;
-  }
-  return results;
-}
-
-function extractCity(a){
-  if(!a?.address)return null;
-  const p=a.address.split(",");
-  return p[0].trim().replace(/^\d{4,5}\s*/,"")||p[1]?.trim()||null;
-}
-
-// Construit les données normalisées depuis Bubble ou Mock
+// Remplace ta fonction fetchAll existante par celle-ci
 async function fetchAll(){
   if(USE_MOCK){
     const cm=Object.fromEntries(MOCK_COMPANIES.map(c=>[c._id,{id:c._id,name:c.name}]));
@@ -161,14 +142,19 @@ async function fetchAll(){
       intervention_status:i.intervention_status,
       address:i.address,agents:i.agents,rapport:i.rapport,
     }));
-    return{offers,interventions,projects:Object.values(pm)};
+    // Ajout du retour 'companies' pour le mode Mock
+    return{offers,interventions,projects:Object.values(pm),companies:MOCK_COMPANIES};
   }
+
+  // MODE RÉEL
   const [rawOffers,rawProjects,rawInterventions,rawCompanies,rawItems]=await Promise.all([
     fetchAllPages("offers_history_documents"),fetchAllPages("projects"),
     fetchAllPages("interventions"),fetchAllPages("companies"),fetchAllPages("items_devis"),
   ]);
+  
   const companiesMap=Object.fromEntries(rawCompanies.map(c=>[c._id,c]));
   const numByProject={},denomByProject={},montantByOffer={};
+  
   rawItems.forEach(item=>{
     const pid=item._project_attached,oid=item.offer_document_item;
     const ht=item["Total HT"]||item.Total_HT||item.total_ht||0;
@@ -177,6 +163,7 @@ async function fetchAll(){
     if(oid)montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
     if(pid){denomByProject[pid]=(denomByProject[pid]||0)+ht;if(isI)numByProject[pid]=(numByProject[pid]||0)+pi;}
   });
+
   const projectsMap=Object.fromEntries(rawProjects.map(p=>{
     const company=companiesMap[p._company_attached]||null;
     const city=extractCity(p.chantier_address);
@@ -189,6 +176,7 @@ async function fetchAll(){
       avancement:denom>0?Math.min(num/denom,1):0,
     }];
   }));
+
   const offers=rawOffers.filter(o=>o._project_attached).map(o=>{
     const project=projectsMap[o._project_attached]||null;
     return{id:o._id,offer_number:o.devis_number||o._id,
@@ -198,6 +186,7 @@ async function fetchAll(){
       _project_attached:project,montant_ht:montantByOffer[o._id]||0,is_active:o.is_active!==false,
     };
   });
+
   const interventions=rawInterventions.map(i=>{
     const project=projectsMap[i._project_attached]||null;
     return{id:i._id,name:i.name||"Sans nom",_project_attached:project,
@@ -208,7 +197,9 @@ async function fetchAll(){
       agents:[],rapport:"",
     };
   });
-  return{offers,interventions,projects:Object.values(projectsMap)};
+
+  // ICI : On retourne aussi 'companies' (rawCompanies) pour pouvoir chercher dedans
+  return{offers,interventions,projects:Object.values(projectsMap),companies:rawCompanies};
 }
 
 // ─── COMPOSANTS PARTAGÉS ──────────────────────────────────────────────────────
@@ -900,6 +891,7 @@ function PageFicheClient({mainTab,setMainTab}){
   const[contacts,setContacts]=useState([]);
   const[projets,setProjets]=useState([]);
   const[interventions,setInterventions]=useState([]);
+  const[offers,setOffers]=useState([]); // Nouvel état pour les offres
   const[historique,setHistorique]=useState([]);
   const[caTotal,setCaTotal]=useState(0);
   const[loading,setLoading]=useState(true);
@@ -911,29 +903,59 @@ function PageFicheClient({mainTab,setMainTab}){
       const c=MOCK_COMPANIES.find(c=>c._id===id)||MOCK_COMPANIES[0];
       const p=MOCK_PROJECTS.filter(p=>p._company_attached===c._id);
       const pIds=p.map(x=>x._id);
-      const ca=MOCK_OFFERS.filter(o=>pIds.includes(o._project_attached)&&o.is_active).reduce((s,o)=>s+(o.montant_ht||0),0);
+      const os=MOCK_OFFERS.filter(o=>pIds.includes(o._project_attached)&&o.is_active);
+      const ca=os.reduce((s,o)=>s+(o.montant_ht||0),0);
       const i=MOCK_INTERVENTIONS.filter(i=>pIds.includes(i._project_attached));
-      setClient(c);setProjets(p);setInterventions(i);setCaTotal(ca);
+      setClient(c);setProjets(p);setInterventions(i);setOffers(os);setCaTotal(ca);
       setContacts(MOCK_CONTACTS[id]||[]);setHistorique(MOCK_HISTORIQUE[id]||[]);setLoading(false);
+    } else {
+      // LOGIQUE BUBBLE RÉELLE AJOUTÉE ICI
+      fetchAll().then(data => {
+        // 1. Trouver le client dans la liste complète
+        const c = data.companies.find(comp => comp._id === id);
+        if (c) {
+          // 2. Filtrer les projets de ce client (attention _company_attached est un objet {id, name} en sortie de fetchAll)
+          const p = data.projects.filter(proj => proj._company_attached?.id === id);
+          const pIds = p.map(x => x.id);
+
+          // 3. Filtrer interventions et offres liées aux projets
+          const i = data.interventions.filter(inv => pIds.includes(inv._project_attached?.id));
+          const os = data.offers.filter(o => pIds.includes(o._project_attached?.id) && o.is_active);
+          const ca = os.reduce((s,o)=>s+(o.montant_ht||0),0);
+
+          setClient(c);
+          setProjets(p);
+          setInterventions(i);
+          setOffers(os);
+          setCaTotal(ca);
+          // Contacts et historique vides pour l'instant (non chargés par fetchAll)
+          setContacts([]);
+          setHistorique([]);
+        }
+        setLoading(false);
+      });
     }
   },[id]);
 
   if(loading)return<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",fontFamily:"Nunito,sans-serif",color:T.textSoft}}>Chargement…</div>;
   if(!client)return<div style={{padding:40,fontFamily:"Nunito,sans-serif"}}>Client introuvable</div>;
+  
   const nbPlanifiees=interventions.filter(i=>i.intervention_status==="Planifié").length;
-  const caByProjet=projets.map(p=>({name:p.name.split(" ")[0],ca:MOCK_OFFERS.filter(o=>o._project_attached===p._id).reduce((s,o)=>s+(o.montant_ht||0),0)}));
+  // Correction: Utiliser 'offers' (state) au lieu de MOCK_OFFERS
+  const caByProjet=projets.map(p=>({
+    name:p.name.split(" ")[0],
+    ca:offers.filter(o=>(o._project_attached?.id || o._project_attached)===p.id).reduce((s,o)=>s+(o.montant_ht||0),0)
+  }));
 
   return(
     <div style={{background:T.bg,minHeight:"100vh"}}>
       <Navbar mainTab={mainTab} setMainTab={setMainTab}/>
-      {/* Breadcrumb */}
       <div style={{background:T.card,borderBottom:`1px solid ${T.border}`,padding:"10px 28px",display:"flex",alignItems:"center",gap:8}}>
         <span onClick={()=>navigate("/clients")} style={{fontSize:12,color:T.textSoft,cursor:"pointer",fontWeight:600}}>← Clients</span>
         <span style={{color:T.border,fontSize:16}}>›</span>
         <span style={{fontSize:12,fontWeight:700,color:T.text}}>{client.name}</span>
       </div>
       <div style={{padding:"24px 28px",maxWidth:1400,margin:"0 auto"}}>
-        {/* HERO */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:"22px 26px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",borderLeft:`5px solid ${T.indigo}`}}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
             <div>
@@ -947,7 +969,7 @@ function PageFicheClient({mainTab,setMainTab}){
                 </div>
               </div>
               <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-                {client.address&&<span style={{fontSize:12,color:T.textMed}}>📍 {client.address}</span>}
+                {client.address&&<span style={{fontSize:12,color:T.textMed}}>📍 {typeof client.address === 'string' ? client.address : (client.address.address || "Adresse inconnue")}</span>}
                 {client.phone&&<span style={{fontSize:12,color:T.textMed}}>📞 {client.phone}</span>}
                 {client.email&&<span style={{fontSize:12,color:T.textMed}}>✉️ {client.email}</span>}
               </div>
@@ -962,10 +984,8 @@ function PageFicheClient({mainTab,setMainTab}){
             </div>
           </div>
         </div>
-        {/* GRILLE */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:20}}>
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            {/* Onglets */}
             <div style={{display:"flex",gap:3,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:4,width:"fit-content"}}>
               {[["projets","📁 Projets"],["contacts","👥 Contacts"],["historique","📋 Historique"]].map(([key,label])=>(
                 <button key={key} onClick={()=>setActiveTab(key)} style={{cursor:"pointer",padding:"7px 16px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",background:activeTab===key?T.card:"transparent",color:activeTab===key?T.indigo:T.textMed,boxShadow:activeTab===key?"0 1px 4px rgba(0,0,0,0.08)":"none",transition:"all 0.15s"}}>
@@ -973,61 +993,24 @@ function PageFicheClient({mainTab,setMainTab}){
                 </button>
               ))}
             </div>
-            {activeTab==="projets"&&projets.map(p=><ProjetAccordeon key={p._id} projet={p} interventions={interventions}/>)}
+            {activeTab==="projets"&&projets.map(p=><ProjetAccordeon key={p.id} projet={p} interventions={interventions}/>)}
             {activeTab==="contacts"&&(
               <CardBox title="Contacts de l'entreprise" accent={T.teal}>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                  {contacts.length===0?<span style={{color:T.textSoft,fontSize:13}}>Aucun contact</span>
-                    :contacts.map(ct=>{
-                    const c=TYPE_CONTACT_COLOR[ct.type_contact]||T.textSoft;
-                    return(
-                      <div key={ct._id} style={{padding:"14px 16px",borderRadius:10,border:`1px solid ${c}25`,background:`${c}08`}}>
-                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
-                          <div style={{width:34,height:34,borderRadius:10,background:`${c}18`,border:`1px solid ${c}30`,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                            <span style={{fontSize:14,fontWeight:800,color:c}}>{ct.name?.charAt(0)}</span>
-                          </div>
-                          <Badge label={ct.type_contact} color={c}/>
-                        </div>
-                        <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:4}}>{ct.name}</div>
-                        {ct.email&&<div style={{fontSize:11,color:T.textSoft,marginBottom:2}}>✉️ {ct.email}</div>}
-                        {ct.phone&&<div style={{fontSize:11,color:T.textSoft}}>📞 {ct.phone}</div>}
-                      </div>
-                    );
-                  })}
-                </div>
+                <div style={{padding:20,textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun contact (API non connectée)</div>
               </CardBox>
             )}
             {activeTab==="historique"&&(
               <CardBox title="Historique des contacts" accent={T.violet}
                 badge={<button onClick={()=>setShowModal(true)} style={{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:`linear-gradient(135deg,${T.indigo},${T.teal})`,color:"#fff",fontSize:12,fontWeight:700}}>+ Ajouter</button>}>
-                <div style={{position:"relative",paddingLeft:8}}>
-                  <div style={{position:"absolute",left:16,top:0,bottom:0,width:2,background:T.border,borderRadius:1}}/>
-                  {historique.length===0&&<div style={{padding:"20px 0",color:T.textSoft,fontSize:13}}>Aucun historique</div>}
-                  {historique.map((h,idx)=>{
-                    const c=HISTORIQUE_COLOR[h.type]||T.textSoft;
-                    return(
-                      <div key={h._id||idx} style={{display:"flex",gap:16,marginBottom:idx<historique.length-1?20:0,position:"relative"}}>
-                        <div style={{width:32,height:32,borderRadius:"50%",background:`${c}15`,border:`2px solid ${c}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,zIndex:1}}>
-                          <span style={{fontSize:12}}>{h.type==="Appel"?"📞":h.type==="Email"?"✉️":h.type==="Réunion"?"🤝":"📝"}</span>
-                        </div>
-                        <div style={{flex:1,paddingTop:2}}>
-                          <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
-                            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                              <Badge label={h.type} color={c}/>
-                              <span style={{fontSize:11,color:T.textSoft,fontWeight:600}}>{h.auteur}</span>
-                            </div>
-                            <span style={{fontSize:11,color:T.textSoft}}>{fmtDate(h.date)}</span>
-                          </div>
-                          <div style={{fontSize:13,color:T.textMed,lineHeight:1.5,padding:"10px 14px",background:T.cardAlt,borderRadius:8,border:`1px solid ${T.border}`}}>{h.note}</div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                {historique.length===0
+                  ?<div style={{padding:"20px 0",color:T.textSoft,fontSize:13,textAlign:"center"}}>Aucun historique</div>
+                  :historique.map((h,idx)=>(
+                    <div key={idx} style={{marginBottom:10}}>{h.type} : {h.note}</div>
+                  ))
+                }
               </CardBox>
             )}
           </div>
-          {/* SIDEBAR */}
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <CardBox title="CA par projet" accent={T.sage}>
               <ResponsiveContainer width="100%" height={140}>
@@ -1044,42 +1027,22 @@ function PageFicheClient({mainTab,setMainTab}){
               </div>
             </CardBox>
             <CardBox title="Prochaines interventions" accent={T.violet}>
-              {interventions.filter(i=>i.intervention_status==="Planifié").sort((a,b)=>new Date(a.date)-new Date(b.date)).length===0
+              {interventions.filter(i=>i.intervention_status==="Planifié").length===0
                 ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"12px 0"}}>Aucune planifiée</div>
                 :interventions.filter(i=>i.intervention_status==="Planifié").sort((a,b)=>new Date(a.date)-new Date(b.date)).map((i,idx,arr)=>{
                   const d=diffDays(i.date);
                   const dc=d<=3?T.rose:d<=7?T.amber:T.violet;
                   return(
-                    <div key={i._id||i.id} style={{paddingBottom:10,marginBottom:idx<arr.length-1?10:0,borderBottom:idx<arr.length-1?`1px solid ${T.border}`:"none"}}>
+                    <div key={i.id} style={{paddingBottom:10,marginBottom:idx<arr.length-1?10:0,borderBottom:idx<arr.length-1?`1px solid ${T.border}`:"none"}}>
                       <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
                         <span style={{fontSize:12,fontWeight:700,color:T.text}}>{i.name}</span>
                         <span style={{fontSize:11,fontWeight:700,color:dc}}>J-{d}</span>
                       </div>
                       <div style={{fontSize:11,color:T.textSoft,marginBottom:4}}>{fmtDate(i.date)}</div>
-                      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {(i.agents||[]).map(a=><span key={a} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>{a}</span>)}
-                      </div>
                     </div>
                   );
                 })
               }
-            </CardBox>
-            <CardBox title="Contacts" accent={T.teal}>
-              {contacts.filter(c=>["Principal","Secondaire"].includes(c.type_contact)).map(ct=>{
-                const c=TYPE_CONTACT_COLOR[ct.type_contact]||T.textSoft;
-                return(
-                  <div key={ct._id} style={{display:"flex",alignItems:"center",gap:10,marginBottom:10}}>
-                    <div style={{width:32,height:32,borderRadius:8,background:`${c}18`,border:`1px solid ${c}25`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                      <span style={{fontSize:13,fontWeight:800,color:c}}>{ct.name?.charAt(0)}</span>
-                    </div>
-                    <div style={{flex:1}}>
-                      <div style={{fontSize:12,fontWeight:700,color:T.text}}>{ct.name}</div>
-                      <div style={{fontSize:11,color:T.textSoft}}>{ct.email}</div>
-                    </div>
-                    <Badge label={ct.type_contact} color={c}/>
-                  </div>
-                );
-              })}
             </CardBox>
           </div>
         </div>
@@ -1091,7 +1054,6 @@ function PageFicheClient({mainTab,setMainTab}){
     </div>
   );
 }
-
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App(){
   const[mainTab,setMainTab]=useState("dashboard");
