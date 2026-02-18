@@ -47,14 +47,36 @@ const MOCK_INTERVENTIONS = [
 ];
 
 // ─── FETCH (LOGIQUE EXACTEMENT PAREILLE) ──────────────────────────────────────
+// ─── CONFIGURATION SÉCURITÉ ───────────────────────────────────────────────────
+// ⚠️ Doit être identique à la variable "MY_INTERNAL_SECRET" dans Vercel
+const API_SECRET = 'SuperSecu_Dash_2024!Prod'; 
+
+// ─── FETCH (LOGIQUE EXACTEMENT PAREILLE + SÉCURITÉ AJOUTÉE) ───────────────────
 async function fetchAllPages(endpoint) {
   let results = [], cursor = 0;
   while (true) {
-    const res  = await fetch(`/api/bubble?table=${endpoint}&cursor=${cursor}`);
+    // 👇 MODIFICATION ICI : Ajout des headers pour le mot de passe
+    const res = await fetch(`/api/bubble?table=${endpoint}&cursor=${cursor}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-secret-token': API_SECRET // <--- La clé du coffre-fort
+      }
+    });
+
+    // Petite sécurité anti-crash si le serveur rejette (401/403)
+    if (!res.ok) {
+        console.error(`Erreur API (${res.status}) sur la table : ${endpoint}`);
+        break; 
+    }
+
     const data = await res.json();
     const page = data.response?.results || [];
     results = results.concat(page);
+    
+    // Si plus rien à charger, on sort
     if ((data.response?.remaining ?? 0) === 0) break;
+    
     cursor += page.length;
   }
   return results;
@@ -67,7 +89,7 @@ function extractCity(addressObj) {
 }
 
 async function fetchAll() {
-  if (USE_MOCK) {
+  if (typeof USE_MOCK !== 'undefined' && USE_MOCK) {
     const cm = Object.fromEntries(MOCK_COMPANIES.map(c => [c.id, c]));
     const pm = Object.fromEntries(MOCK_PROJECTS.map(p => [p.id, { ...p, _company_attached: cm[p._company_attached] }]));
     // Avancement mock : p1=67%, p2=45%, p5=100%, autres=0
