@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       `https://www.portail-qualidal.com/version-test/api/1.1/obj/${table}?limit=100&cursor=${cursor}`,
       {
         headers: {
-          Authorization: "Bearer test_f92090a3c34a5a84387182092bf29434",
+          Authorization: "Bearer 82ae78ae231fef0cfdea32d01924a52a",
         },
       }
     );
