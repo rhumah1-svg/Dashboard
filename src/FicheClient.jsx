@@ -234,14 +234,14 @@ async function fetchClientData(clientName){
     _cache.interventions || fetchAllPages("interventions").then(r=>{ _cache.interventions=r; return r; }),
     _cache.offers        || fetchAllPages("offers_history_documents").then(r=>{ _cache.offers=r; return r; }),
     _cache.items         || fetchAllPages("items_devis").then(r=>{ _cache.items=r; return r; }),
-    _cache.contacts      || fetchAllPages("contact_projet").then(r=>{ _cache.contacts=r; return r; }),
+    _cache.contacts      || fetchAllPages("contacts").then(r=>{ _cache.contacts=r; return r; }),
   ]);
 
   // Filtres JS
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
   const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
-  const rawContactsF = rawContacts.filter(c=>projectIds.has(c.projet_contact_attache));
+  const rawContactsF = rawContacts.filter(c=>c._company_attached===companyId);
   console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts:", rawContactsF.length);
 
   // Items groupés par devis (pour affichage accordéon dans onglet Devis)
@@ -317,11 +317,11 @@ async function fetchClientData(clientName){
   }));
 
   // Normalisation contacts
-  // Champs Bubble : Nom, role_contact_projet (OS_contact_type), email, phone
+  // Table: contacts | Champs: first_last_name, type_contact, email, phone
   const contacts = rawContactsF.map(c=>({
     id:c._id,
-    name:c.Nom||c.nom||c.name||"Sans nom",
-    type:normalizeType(c.role_contact_projet),
+    name:c.first_last_name||c.Nom||c.nom||c.name||"Sans nom",
+    type:normalizeType(c.type_contact),
     email:c.email||"",
     phone:c.phone||c.telephone||"",
   }));
@@ -470,18 +470,18 @@ function DevisRow({d, idx}){
       {/* Items accordéon */}
       {open&&(d.items||[]).length>0&&(
         <div style={{background:T.indigoL,borderBottom:`1px solid ${T.border}`,padding:"0 16px 10px 46px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"6px 0",marginBottom:4,borderBottom:`1px solid ${T.border}`}}>
-            {["Désignation","Qté","Unité","P.U. HT","Total HT"].map(h=>
-              <span key={h} style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{h}</span>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 60px 60px 90px 90px",gap:12,padding:"6px 0",marginBottom:4,borderBottom:`1px solid ${T.border}`}}>
+            {[["Désignation","left"],["Qté","right"],["Unité","left"],["P.U. HT","right"],["Total HT","right"]].map(([h,a])=>
+              <span key={h} style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em",textAlign:a}}>{h}</span>
             )}
           </div>
           {(d.items||[]).map(item=>(
-            <div key={item.id} style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"5px 0",borderBottom:`1px solid ${T.border}44`}}>
+            <div key={item.id} style={{display:"grid",gridTemplateColumns:"2fr 60px 60px 90px 90px",gap:12,padding:"6px 0",borderBottom:`1px solid ${T.border}33`,alignItems:"center"}}>
               <span style={{fontSize:12,color:T.text}}>{item.designation}</span>
               <span style={{fontSize:12,color:T.textMed,textAlign:"right"}}>{item.quantity}</span>
-              <span style={{fontSize:12,color:T.textMed}}>{item.unit}</span>
+              <span style={{fontSize:12,color:T.textMed,textAlign:"left",paddingLeft:4}}>{item.unit}</span>
               <span style={{fontSize:12,color:T.textMed,textAlign:"right"}}>{fmt(item.price_ht)}</span>
-              <span style={{fontSize:12,fontWeight:600,color:T.indigo,textAlign:"right"}}>{fmt(item.total_ht)}</span>
+              <span style={{fontSize:12,fontWeight:700,color:T.indigo,textAlign:"right"}}>{fmt(item.total_ht)}</span>
             </div>
           ))}
           <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}>
@@ -820,28 +820,7 @@ export default function FicheClient({clientId, clientName}){
               }
             </Card>
 
-            {/* CONTACTS RAPIDES */}
-            {/* [5] Contact_projet filtrés role IN ["Principal","Secondaire"] */}
-            <Card title="Contacts principaux" accent={T.teal}>
-              {contactsRapides.length===0
-                ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucun contact principal</div>
-                :(contactsRapides||[]).map(ct=>{
-                  const c=TYPE_CONTACT_COLOR[ct.type]||T.textSoft;
-                  return (
-                    <div key={ct.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
-                      <div style={{width:32,height:32,borderRadius:8,background:`${c}18`,border:`1px solid ${c}25`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                        <span style={{fontSize:13,fontWeight:800,color:c}}>{ct.name.charAt(0)}</span>
-                      </div>
-                      <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:12,fontWeight:700,color:T.text}}>{ct.name}</div>
-                        <div style={{fontSize:11,color:T.textSoft,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{ct.email}</div>
-                      </div>
-                      <Badge label={ct.type} color={c}/>
-                    </div>
-                  );
-                })
-              }
-            </Card>
+
 
           </div>
         </div>
