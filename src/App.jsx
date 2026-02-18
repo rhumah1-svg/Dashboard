@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import FicheClient from './FicheClient';
 
@@ -630,6 +631,72 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
   );
 }
 
+// ─── HEADER PARTAGÉ ───────────────────────────────────────────────────────────
+function AppHeader({tab, setTab, selectedName, onClearCompany}){
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isClients = location.pathname === "/ficheclient";
+  const isDashboard = !isClients;
+
+  const handleNavClick = (key) => {
+    if (key === "clients") {
+      navigate("/ficheclient");
+    } else {
+      if (isClients) navigate("/");
+      setTab(key);
+    }
+  };
+
+  return (
+    <div style={{borderBottom:`1px solid ${T.border}`,padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",background:T.card,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:24}}>
+        {/* Logo */}
+        <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>{navigate("/");setTab("devis");}}>
+          <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.indigo},${T.teal})`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px ${T.indigo}44`}}>
+            <span style={{fontSize:16,fontWeight:900,color:"#fff"}}>Q</span>
+          </div>
+          <div>
+            <div style={{fontSize:15,fontWeight:800,color:T.text,lineHeight:1.1}}>QUALIDAL</div>
+            <div style={{fontSize:9,color:T.textSoft,letterSpacing:"0.1em",fontWeight:600}}>DASHBOARD</div>
+          </div>
+        </div>
+
+        {/* Nav tabs */}
+        <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
+          {[
+            ["devis",        "📋 Devis"],
+            ["interventions","🔧 Interventions"],
+            ["clients",      "🏢 Clients"],
+          ].map(([key,label])=>{
+            const active = key==="clients" ? isClients : (isDashboard && tab===key);
+            return (
+              <button key={key} onClick={()=>handleNavClick(key)}
+                style={{cursor:"pointer",padding:"7px 20px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",
+                  background:active?T.card:"transparent",
+                  color:active?T.indigo:T.textMed,
+                  boxShadow:active?`0 1px 6px rgba(0,0,0,0.08)`:"none",
+                  transition:"all 0.15s"}}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        {selectedName&&isDashboard&&(
+          <div style={{display:"flex",alignItems:"center",gap:7,padding:"6px 13px",background:T.indigoL,border:`1px solid ${T.indigo}30`,borderRadius:20}}>
+            <span style={{fontSize:12,color:T.indigo,fontWeight:700}}>🏢 {selectedName}</span>
+            <button onClick={onClearCompany} style={{cursor:"pointer",background:"none",border:"none",color:T.indigo,fontSize:15,lineHeight:1,padding:0}}>×</button>
+          </div>
+        )}
+        {USE_MOCK&&<span style={{fontSize:10,color:T.amber,padding:"3px 8px",border:`1px solid ${T.amber}44`,borderRadius:4,fontWeight:700}}>MOCK</span>}
+        <span style={{fontSize:12,color:T.textSoft,fontWeight:500}}>{new Date().toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}</span>
+      </div>
+    </div>
+  );
+}
+
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function QualidaDashboard(){
   const [tab,setTab]=useState("devis");
@@ -672,44 +739,21 @@ export default function QualidaDashboard(){
         input::placeholder{color:${T.textSoft};}
       `}</style>
 
-      {/* HEADER */}
-      <div style={{borderBottom:`1px solid ${T.border}`,padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",background:T.card,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
-        <div style={{display:"flex",alignItems:"center",gap:24}}>
-          <div style={{display:"flex",alignItems:"center",gap:10}}>
-            <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.indigo},${T.teal})`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px ${T.indigo}44`}}>
-              <span style={{fontSize:16,fontWeight:900,color:"#fff"}}>Q</span>
-            </div>
-            <div>
-              <div style={{fontSize:15,fontWeight:800,color:T.text,lineHeight:1.1}}>QUALIDAL</div>
-              <div style={{fontSize:9,color:T.textSoft,letterSpacing:"0.1em",fontWeight:600}}>DASHBOARD</div>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
-            {[["devis","📋 Devis"],["interventions","🔧 Interventions"]].map(([key,label])=>(
-              <button key={key} onClick={()=>setTab(key)} style={{cursor:"pointer",padding:"7px 20px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",background:tab===key?T.card:"transparent",color:tab===key?T.indigo:T.textMed,boxShadow:tab===key?`0 1px 6px rgba(0,0,0,0.08)`:"none",transition:"all 0.15s"}}>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          {selectedName&&(
-            <div style={{display:"flex",alignItems:"center",gap:7,padding:"6px 13px",background:T.indigoL,border:`1px solid ${T.indigo}30`,borderRadius:20}}>
-              <span style={{fontSize:12,color:T.indigo,fontWeight:700}}>🏢 {selectedName}</span>
-              <button onClick={()=>setSelectedCompany(null)} style={{cursor:"pointer",background:"none",border:"none",color:T.indigo,fontSize:15,lineHeight:1,padding:0}}>×</button>
-            </div>
-          )}
-          {USE_MOCK&&<span style={{fontSize:10,color:T.amber,padding:"3px 8px",border:`1px solid ${T.amber}44`,borderRadius:4,fontWeight:700}}>MOCK</span>}
-          <span style={{fontSize:12,color:T.textSoft,fontWeight:500}}>{new Date().toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}</span>
-        </div>
-      </div>
+      <AppHeader tab={tab} setTab={setTab} selectedName={selectedName} onClearCompany={()=>setSelectedCompany(null)}/>
 
-      <div style={{padding:"24px 28px",maxWidth:1440,margin:"0 auto"}}>
-        {tab==="devis"
-          ?<TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
-          :<TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
-        }
-      </div>
+      <Routes>
+        {/* Dashboard principal */}
+        <Route path="/" element={
+          <div style={{padding:"24px 28px",maxWidth:1440,margin:"0 auto"}}>
+            {tab==="devis"
+              ?<TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+              :<TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+            }
+          </div>
+        }/>
+        {/* Fiche client */}
+        <Route path="/ficheclient" element={<FicheClient/>}/>
+      </Routes>
 
       <div style={{padding:"14px 28px",fontSize:11,color:T.textSoft,textAlign:"center",borderTop:`1px solid ${T.border}`,background:T.card,fontWeight:500}}>
         Qualidal · Dashboard Commercial & Opérationnel · {USE_MOCK?"Données de démonstration":"Bubble Live"}
