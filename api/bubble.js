@@ -1,17 +1,18 @@
-export default async function handler(req, res) {
-  // --- 1. SÉCURITÉ : LISTE BLANCHE (VERROU 1) ---
-  // Liste EXHAUSTIVE des tables que ton dashboard a le droit de lire.
-  // Modifie cette liste avec les vrais noms de tes tables Bubble (en minuscules souvent).
+// On utilise la syntaxe compatible Node.js standard
+module.exports = async (req, res) => {
+
+  // --- 1. SÉCURITÉ : LISTE BLANCHE ---
   const ALLOWED_TABLES = ['Companies', 'Items_devis', 'Contacts' 'Offers_history_documents', 'Projects', 'Interventions', 'Users']; 
 
-  // --- 2. SÉCURITÉ : CORS (VERROU 2) ---
-  // Remplace '*' par l'URL exacte de ton frontend pour empêcher les autres sites de t'utiliser.
+  // --- 2. SÉCURITÉ : CORS ---
+  // Remplace par ton URL exacte
   const ALLOWED_ORIGIN = "https://dashboard-eta-liard-55.vercel.app";
 
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  
-  // Gestion de la requête "Preflight" (Le navigateur demande la permission)
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-secret-token");
+
+  // Gestion de la requête "Preflight"
   if (req.method === "OPTIONS") { 
     res.status(200).end(); 
     return; 
@@ -21,27 +22,34 @@ export default async function handler(req, res) {
 
   // --- VÉRIFICATION DU PARAMÈTRE TABLE ---
   if (!table) {
-    res.status(400).json({ error: "Missing table parameter" });
-    return;
+    return res.status(400).json({ error: "Missing table parameter" });
   }
 
-  // --- APPLICATION DU VERROU 1 ---
-  // Si la table demandée n'est pas dans la liste, on rejette l'appel.
+  // --- APPLICATION DU VERROU 1 (Whitelist) ---
   if (!ALLOWED_TABLES.includes(table)) {
     console.warn(`Tentative d'accès bloquée à la table : ${table}`);
-    res.status(403).json({ error: "Accès interdit : Table non autorisée." });
-    return;
+    return res.status(403).json({ error: "Accès interdit : Table non autorisée." });
+  }
+
+  // --- APPLICATION DU VERROU 2 (Secret Token) ---
+  // On vérifie que le header contient le bon mot de passe
+  const clientToken = req.headers['x-secret-token'];
+  const serverSecret = process.env.MY_INTERNAL_SECRET;
+
+  if (clientToken !== serverSecret) {
+     console.warn("Tentative d'accès sans le bon token secret");
+     return res.status(401).json({ error: "Non autorisé (Token invalide)" });
   }
 
   try {
-    // Note : J'ai remplacé la clé en dur par process.env.BUBBLE_API_KEY
-    // Tu dois ajouter BUBBLE_API_KEY dans tes réglages Vercel.
+    // Récupération de la clé API Bubble depuis Vercel
     const bubbleApiKey = process.env.BUBBLE_API_KEY; 
 
     if (!bubbleApiKey) {
-        throw new Error("La clé API n'est pas configurée dans Vercel");
+        throw new Error("La clé API Bubble n'est pas configurée dans Vercel");
     }
 
+    // Appel vers Bubble
     const response = await fetch(
       `https://www.portail-qualidal.com/version-test/api/1.1/obj/${table}?limit=100&cursor=${cursor}`,
       {
@@ -56,10 +64,10 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    res.status(200).json(data);
+    return res.status(200).json(data);
     
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
-}
+};
