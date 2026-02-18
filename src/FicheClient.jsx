@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 // Passer à false pour brancher Bubble
-const USE_MOCK    = false;
+const USE_MOCK    = true;
 const DASH_SECRET = "qd_x9k2m7p4nz3";
 // URL Bubble : version-test → sera automatiquement la live quand déployé
 // car le proxy /api/bubble dans vite.config pointe vers portail-qualidal.com
