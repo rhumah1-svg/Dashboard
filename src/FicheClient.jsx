@@ -241,18 +241,28 @@ async function fetchClientData(clientName){
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
   const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
-  // Contacts : filtre par _company_attached (Bubble retourne l'_id en string)
-  // Log pour debug : voir la structure réelle du premier contact
-  if(rawContacts.length>0) console.log("[FC] contact sample:", JSON.stringify(rawContacts[0]).slice(0,200));
+  // ── DEBUG CONTACTS ── log la structure complète du 1er contact pour trouver le bon champ
+  if(rawContacts.length>0){
+    const sample = rawContacts[0];
+    console.log("[FC] CONTACT KEYS:", Object.keys(sample));
+    console.log("[FC] CONTACT FULL:", JSON.stringify(sample));
+    // Chercher quel champ contient l'id de la company
+    Object.entries(sample).forEach(([k,v])=>{
+      if(v && (String(v).includes(companyId) || (typeof v==="object" && JSON.stringify(v).includes(companyId))))
+        console.log("[FC] MATCH company dans champ:", k, "=", JSON.stringify(v));
+    });
+  }
+
+  // Filtre ultra-permissif : teste TOUS les champs qui pourraient contenir companyId
   const rawContactsF = rawContacts.filter(c=>{
-    const ca = c._company_attached;
-    if(!ca) return false;
-    // Bubble peut retourner l'id direct ou un objet
-    if(typeof ca==="string") return ca===companyId;
-    if(typeof ca==="object") return ca._id===companyId || ca.id===companyId;
-    return false;
+    return Object.values(c).some(v=>{
+      if(!v) return false;
+      if(typeof v==="string") return v===companyId;
+      if(typeof v==="object") return JSON.stringify(v).includes(companyId);
+      return false;
+    });
   });
-  console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts raw:", rawContacts.length, "| filtrés:", rawContactsF.length);
+  console.log("[FC] contacts raw:", rawContacts.length, "| filtrés:", rawContactsF.length, "| companyId:", companyId);
 
   // Items groupés par devis (pour affichage accordéon dans onglet Devis)
   const itemsByOffer = {};
