@@ -255,7 +255,7 @@ async function fetchClientData(clientName){
     name:p.name||"",
     status:p.OS_devis_status||"",
     type:p.OS_prestations_type||"",
-    address:p.chantier_address?.address||p.address||"",
+    address:(()=>{ const a=p.chantier_address||p.address; if(!a) return ""; if(typeof a==="string") return a; return a.address||a.name||""; })(),
     ca_total: denomByProject[p._id]||0,
     avancement: denomByProject[p._id]>0 ? Math.min((numByProject[p._id]||0)/denomByProject[p._id],1) : 0,
     interventions: intervByProject[p._id]||[],
@@ -288,7 +288,7 @@ async function fetchClientData(clientName){
   const client = {
     id:company._id,
     name:company.name||clientName,
-    address:company.address||"",
+    address:(()=>{ const a=company.address; if(!a) return ""; if(typeof a==="string") return a; return a.address||a.name||""; })(),
     phone:company.phone||"",
     email:company.email||"",
     siret:company.siret||"",
