@@ -2,7 +2,7 @@ export default async function handler(req, res) {
   // --- 1. SÉCURITÉ : LISTE BLANCHE (VERROU 1) ---
   // Liste EXHAUSTIVE des tables que ton dashboard a le droit de lire.
   // Modifie cette liste avec les vrais noms de tes tables Bubble (en minuscules souvent).
-  const ALLOWED_TABLES = ['companies', 'devis', 'projets', 'users']; 
+  const ALLOWED_TABLES = ['Companies', 'Items_devis', 'Contacts' 'Offers_history_documents', 'Projects', 'Interventions', 'Users']; 
 
   // --- 2. SÉCURITÉ : CORS (VERROU 2) ---
   // Remplace '*' par l'URL exacte de ton frontend pour empêcher les autres sites de t'utiliser.
