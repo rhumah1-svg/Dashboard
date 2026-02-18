@@ -888,7 +888,7 @@ export default function QualidaDashboard(){
         }/>
         {/* FicheClient reçoit l'activeClient sélectionné via searchbox */}
         {/* activeClient = { id, name } — utiliser activeClient.id pour fetch Bubble */}
-        <Route path="/ficheclient" element={<FicheClient clientId={activeClient?.id} clientName={activeClient?.name}/>}/>
+        <Route path="/ficheclient" element={<FicheClient key={activeClient?.id||'no-client'} clientId={activeClient?.id} clientName={activeClient?.name}/>}/>
       </Routes>
 
       <div style={{padding:"14px 28px",fontSize:11,color:T.textSoft,textAlign:"center",borderTop:`1px solid ${T.border}`,background:T.card,fontWeight:500}}>
