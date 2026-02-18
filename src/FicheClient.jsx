@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-// ─── MODE MOCK ────────────────────────────────────────────────────────────────
-const USE_MOCK = false;
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// Passer à false pour brancher Bubble
+const USE_MOCK    = false;
+const DASH_SECRET = "qd_x9k2m7p4nz3";
+// URL Bubble : version-test → sera automatiquement la live quand déployé
+// car le proxy /api/bubble dans vite.config pointe vers portail-qualidal.com
+// ── Pour passer en live : changer /version-test/api → /api dans vite.config ──
 
 // ─── THÈME ────────────────────────────────────────────────────────────────────
 const T = {
@@ -150,6 +155,148 @@ const MOCK_HISTORIQUE_INIT = [
 const fmt     = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
 const fmtDate = d => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 const diffDays= d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
+
+// ─── FETCH BUBBLE ─────────────────────────────────────────────────────────────
+// Toutes les requêtes passent par le proxy /api/bubble (vite.config)
+// clientName = champ "name" de la table Companies (ex: "IDEC")
+
+async function fetchPage(table, constraints, cursor=0){
+  const c = encodeURIComponent(JSON.stringify(constraints));
+  const res = await fetch(`/api/bubble?table=${table}&cursor=${cursor}&constraints=${c}&secret=${DASH_SECRET}`);
+  return res.json();
+}
+
+async function fetchAllFiltered(table, constraints){
+  let results=[], cursor=0;
+  while(true){
+    const data = await fetchPage(table, constraints, cursor);
+    const page = data.response?.results||[];
+    results = results.concat(page);
+    if((data.response?.remaining??0)===0) break;
+    cursor += page.length;
+  }
+  return results;
+}
+
+// ── Charge toutes les données d'un client depuis Bubble ──────────────────────
+async function fetchClientData(clientName){
+  // [1] Company — filtre: name = clientName
+  const rawCompanies = await fetchAllFiltered("companies",[
+    {key:"name", constraint_type:"equals", value: clientName}
+  ]);
+  const company = rawCompanies[0] || null;
+  if(!company) return null;
+  const companyId = company._id;
+
+  // [2] Projets — filtre: _company_attached = companyId
+  const rawProjects = await fetchAllFiltered("projects",[
+    {key:"_company_attached", constraint_type:"equals", value: companyId}
+  ]);
+  const projectIds = rawProjects.map(p=>p._id);
+
+  // Fetch parallèle : interventions + devis + items + contacts
+  const [rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all([
+    // [4] Interventions — filtre: _project_attached IN projectIds
+    projectIds.length ? fetchAllFiltered("interventions",[
+      {key:"_project_attached", constraint_type:"in", value: projectIds}
+    ]) : Promise.resolve([]),
+
+    // [3] Devis — filtre: _project_attached IN projectIds
+    projectIds.length ? fetchAllFiltered("offers_history_documents",[
+      {key:"_project_attached", constraint_type:"in", value: projectIds}
+    ]) : Promise.resolve([]),
+
+    // Items pour calculer montant HT par devis
+    projectIds.length ? fetchAllFiltered("items_devis",[
+      {key:"_project_attached", constraint_type:"in", value: projectIds}
+    ]) : Promise.resolve([]),
+
+    // [5] Contacts projet — filtre: projet_contact_attache IN projectIds
+    projectIds.length ? fetchAllFiltered("contact_projet",[
+      {key:"projet_contact_attache", constraint_type:"in", value: projectIds}
+    ]) : Promise.resolve([]),
+  ]);
+
+  // ── Calcul montant HT par devis depuis items ──────────────────────────────
+  const montantByOffer={};
+  rawItems.forEach(item=>{
+    const oid = item.offer_document_item;
+    const ht  = item["Total HT"]||item.Total_HT||item.total_ht||0;
+    if(oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
+  });
+
+  // ── Calcul avancement par projet (items intervention / items total) ────────
+  const numByProject={}, denomByProject={};
+  rawItems.forEach(item=>{
+    const pid=item._project_attached;
+    const ht=item["Total HT"]||item.Total_HT||0;
+    const isI=item.is_intervention===true||item["intervention?"]=== true;
+    if(pid){ denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+ht; }
+  });
+
+  // ── Normalisation interventions par projet ────────────────────────────────
+  const intervByProject={};
+  rawInterventions.forEach(i=>{
+    const pid=i._project_attached;
+    if(!intervByProject[pid]) intervByProject[pid]=[];
+    intervByProject[pid].push({
+      id:i._id,
+      name:i.name||"Sans nom",
+      status:i.intervention_status||i.OS_project_intervention_status||"—",
+      date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
+      agents:[],   // à mapper si tu as un champ agents dans Bubble
+      rapport:"",  // idem
+    });
+  });
+
+  // ── Normalisation projets ─────────────────────────────────────────────────
+  const projets = rawProjects.map(p=>({
+    id:p._id,
+    name:p.name||"",
+    status:p.OS_devis_status||"",
+    type:p.OS_prestations_type||"",
+    address:p.chantier_address?.address||p.address||"",
+    ca_total: denomByProject[p._id]||0,
+    avancement: denomByProject[p._id]>0 ? Math.min((numByProject[p._id]||0)/denomByProject[p._id],1) : 0,
+    interventions: intervByProject[p._id]||[],
+  }));
+
+  // ── Normalisation devis ───────────────────────────────────────────────────
+  const projectMap=Object.fromEntries(rawProjects.map(p=>[p._id,p]));
+  const devis = rawOffers.map(o=>({
+    id:o._id,
+    offer_number:o.offer_number||o.devis_number||o._id,
+    project_id:o._project_attached,
+    project_name:projectMap[o._project_attached]?.name||"",
+    os_devis_statut:o.os_devis_statut||projectMap[o._project_attached]?.OS_devis_status||"",
+    date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10),
+    date_validite:o.date_validite?o.date_validite.slice(0,10):null,
+    montant_ht:montantByOffer[o._id]||0,
+    is_active:o.is_active!==false,
+  }));
+
+  // ── Normalisation contacts ────────────────────────────────────────────────
+  const contacts = rawContacts.map(c=>({
+    id:c._id,
+    name:c.Nom||c.nom||"",
+    type:c.role_contact_projet||"Secondaire",
+    email:c.email||"",
+    phone:c.phone||c.telephone||"",
+  }));
+
+  // ── Normalisation company ─────────────────────────────────────────────────
+  const client = {
+    id:company._id,
+    name:company.name||clientName,
+    address:company.address||"",
+    phone:company.phone||"",
+    email:company.email||"",
+    siret:company.siret||"",
+    created:company["Created Date"]?.slice(0,10)||"",
+  };
+
+  return { client, projets, devis, contacts };
+}
 
 // ─── COMPOSANTS UI ────────────────────────────────────────────────────────────
 function Badge({label,color}){
@@ -331,35 +478,47 @@ function ModalContact({onClose,onSave}){
 
 // ─── PAGE FICHE CLIENT ────────────────────────────────────────────────────────
 export default function FicheClient({clientId, clientName}){
-  // En production : remplacer les MOCK par des fetch Bubble
-  // Exemple: fetch(`/api/bubble?table=companies&id=${clientId}&secret=...`)
-  // Si clientId fourni → utiliser le client sélectionné, sinon fallback MOCK
-  const client = clientId
-    ? { ...MOCK_CLIENT, id: clientId, name: clientName || MOCK_CLIENT.name }
-    : MOCK_CLIENT;
-  const contacts = MOCK_CONTACTS;  // [5] Contact_projet
-  const projets  = MOCK_PROJECTS;  // [2] Projects + [4] interventions
-  const devis    = MOCK_DEVIS;     // [3] Offers_history_documents
+
+  // ── State données ──────────────────────────────────────────────────────────
+  const [client,   setClient]   = useState(clientId ? {...MOCK_CLIENT, name: clientName||""} : MOCK_CLIENT);
+  const [contacts, setContacts] = useState(USE_MOCK ? MOCK_CONTACTS : []);
+  const [projets,  setProjets]  = useState(USE_MOCK ? MOCK_PROJECTS : []);
+  const [devis,    setDevis]    = useState(USE_MOCK ? MOCK_DEVIS    : []);
+  const [fetchLoading, setFetchLoading] = useState(!USE_MOCK && !!clientId);
+  const [fetchError,   setFetchError]   = useState(null);
 
   const [historique,setHistorique] = useState(MOCK_HISTORIQUE_INIT);
   const [showModal,setShowModal]   = useState(false);
   const [activeTab,setActiveTab]   = useState("projets");
 
-  // KPIs
-  const caTotal    = devis.filter(d=>d.is_active).reduce((s,d)=>s+(d.montant_ht||0),0);
-  const nbProjets  = projets.length;
-  const nbInterv   = projets.flatMap(p=>p.interventions).length;
-  const nbPlanif   = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifié").length;
-  const nbDevis    = devis.length;
+  // ── Fetch Bubble quand clientId change ────────────────────────────────────
+  // USE_MOCK=false + clientId fourni → on charge depuis Bubble
+  // USE_MOCK=true                   → on garde les mocks (développement)
+  useEffect(()=>{
+    if(USE_MOCK || !clientId) return;
+    setFetchLoading(true);
+    setFetchError(null);
+    fetchClientData(clientId)
+      .then(data=>{
+        if(!data){ setFetchError("Client introuvable dans Bubble"); return; }
+        setClient(data.client);
+        setProjets(data.projets);
+        setDevis(data.devis);
+        setContacts(data.contacts);
+      })
+      .catch(e=>setFetchError("Erreur de chargement : "+e.message))
+      .finally(()=>setFetchLoading(false));
+  },[clientId]);
 
-  const caByProjet = projets.map(p=>({name:p.name.split(" ")[0],ca:p.ca_total}));
+  // ── KPIs ──────────────────────────────────────────────────────────────────
+  const caTotal   = devis.filter(d=>d.is_active).reduce((s,d)=>s+(d.montant_ht||0),0);
+  const nbProjets = projets.length;
+  const nbInterv  = projets.flatMap(p=>p.interventions).length;
+  const nbPlanif  = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifié").length;
+  const nbDevis   = devis.length;
+  const caByProjet= projets.map(p=>({name:p.name.split(" ")[0],ca:p.ca_total}));
 
-  // Contacts rapides (droite) — Principal + Secondaire
-  // [5] liaison: Contact_projet.role_contact_projet IN ["Principal","Secondaire"]
   const contactsRapides = contacts.filter(c=>["Principal","Secondaire"].includes(c.type));
-
-  // Prochaines interventions planifiées
-  // [4] liaison: intervention.status === "Planifié", triées par date
   const prochaines = projets
     .flatMap(p=>p.interventions.filter(i=>i.status==="Planifié").map(i=>({...i,projet:p.name})))
     .sort((a,b)=>new Date(a.date)-new Date(b.date));
@@ -372,6 +531,38 @@ export default function FicheClient({clientId, clientName}){
     ["contacts",  "👥 Contacts"],
     ["historique","📋 Historique"],
   ];
+
+  // ── Écran chargement ──────────────────────────────────────────────────────
+  if(fetchLoading) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
+      <div style={{textAlign:"center"}}>
+        <div style={{width:40,height:40,border:`3px solid ${T.border}`,borderTopColor:T.indigo,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 14px"}}/>
+        <div style={{fontSize:13,color:T.textSoft}}>Chargement de la fiche <strong>{clientName}</strong>…</div>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      </div>
+    </div>
+  );
+
+  // ── Écran erreur ──────────────────────────────────────────────────────────
+  if(fetchError) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
+      <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.rose}33`}}>
+        <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
+        <div style={{fontSize:14,color:T.rose,fontWeight:700,marginBottom:8}}>{fetchError}</div>
+        <div style={{fontSize:12,color:T.textSoft}}>Vérifie que USE_MOCK=false et que le clientId est correct</div>
+      </div>
+    </div>
+  );
+
+  // ── Écran "aucun client sélectionné" ──────────────────────────────────────
+  if(!clientId && !USE_MOCK) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
+      <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.border}`}}>
+        <div style={{fontSize:32,marginBottom:12}}>🔍</div>
+        <div style={{fontSize:14,color:T.textMed,fontWeight:700}}>Recherche un client dans la barre en haut</div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{background:T.bg,minHeight:"100vh",fontFamily:"'Nunito','Segoe UI',sans-serif",color:T.text}}>
