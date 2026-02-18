@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
+import FicheClient from './FicheClient';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const USE_MOCK = false;
