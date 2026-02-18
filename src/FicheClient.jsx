@@ -2,7 +2,7 @@ import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 // ─── MODE MOCK ────────────────────────────────────────────────────────────────
-const USE_MOCK = true;
+const USE_MOCK = false;
 
 // ─── THÈME ────────────────────────────────────────────────────────────────────
 const T = {
