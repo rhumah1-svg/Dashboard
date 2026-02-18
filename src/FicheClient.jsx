@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 // Passer à false pour brancher Bubble
-const USE_MOCK    = false;
+const USE_MOCK    = true;
 const DASH_SECRET = "qd_x9k2m7p4nz3";
 // URL Bubble : version-test → sera automatiquement la live quand déployé
 // car le proxy /api/bubble dans vite.config pointe vers portail-qualidal.com
@@ -581,7 +581,7 @@ export default function FicheClient({clientId, clientName}){
             <div>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:8}}>
                 <div style={{width:48,height:48,background:`linear-gradient(135deg,${T.indigo}22,${T.teal}22)`,border:`2px solid ${T.indigo}33`,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  <span style={{fontSize:20,fontWeight:900,color:T.indigo}}>{client.name.charAt(0)}</span>
+                  <span style={{fontSize:20,fontWeight:900,color:T.indigo}}>{(client.name||"?").charAt(0)}</span>
                 </div>
                 <div>
                   {/* [1] company.name */}
