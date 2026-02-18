@@ -181,17 +181,22 @@ async function fetchAllFiltered(table, constraints){
 // ── Charge toutes les données d'un client depuis Bubble ──────────────────────
 async function fetchClientData(clientName){
   // [1] Company — filtre: name = clientName
+  console.log("[FicheClient] fetch company:", clientName);
   const rawCompanies = await fetchAllFiltered("companies",[
     {key:"name", constraint_type:"equals", value: clientName}
   ]);
   const company = rawCompanies[0] || null;
+  console.log("[FicheClient] company trouvée:", company?._id, company?.name);
   if(!company) return null;
   const companyId = company._id;
 
   // [2] Projets — filtre: _company_attached = companyId
+  // Bubble: champ Thing ref → constraint_type "equals" avec l_id de la company
+  console.log("[FicheClient] fetch projets pour companyId:", companyId);
   const rawProjects = await fetchAllFiltered("projects",[
     {key:"_company_attached", constraint_type:"equals", value: companyId}
   ]);
+  console.log("[FicheClient] projets trouvés:", rawProjects.length);
   const projectIds = rawProjects.map(p=>p._id);
 
   // Fetch parallèle : interventions + devis + items + contacts
