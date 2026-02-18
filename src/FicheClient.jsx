@@ -330,10 +330,13 @@ function ModalContact({onClose,onSave}){
 }
 
 // ─── PAGE FICHE CLIENT ────────────────────────────────────────────────────────
-export default function FicheClient({clientId}){
+export default function FicheClient({clientId, clientName}){
   // En production : remplacer les MOCK par des fetch Bubble
   // Exemple: fetch(`/api/bubble?table=companies&id=${clientId}&secret=...`)
-  const client   = MOCK_CLIENT;    // [1] Companies
+  // Si clientId fourni → utiliser le client sélectionné, sinon fallback MOCK
+  const client = clientId
+    ? { ...MOCK_CLIENT, id: clientId, name: clientName || MOCK_CLIENT.name }
+    : MOCK_CLIENT;
   const contacts = MOCK_CONTACTS;  // [5] Contact_projet
   const projets  = MOCK_PROJECTS;  // [2] Projects + [4] interventions
   const devis    = MOCK_DEVIS;     // [3] Offers_history_documents
