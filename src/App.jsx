@@ -393,7 +393,7 @@ function TabDevis({ offers, selectedCompany, onSelectCompany }) {
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={byStatut} margin={{ top:4, right:4, left:0, bottom:22 }}>
               <XAxis dataKey="s" tick={{ fontSize:9, fill:C.textSoft, fontFamily:"inherit" }} axisLine={false} tickLine={false} angle={-20} textAnchor="end" />
-              <YAxis tickFormatter={fmtK} tick={{ fontSize:10, fill:C.textSoft, fontFamily:"inherit" }} axisLine={false} tickLine={false} width:={46} />
+              <YAxis tickFormatter={fmtK} tick={{ fontSize:10, fill:C.textSoft, fontFamily:"inherit" }} axisLine={false} tickLine={false} width={46} />
               <Tooltip contentStyle={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:6, fontSize:12, color:C.text }} formatter={(v,_,p)=>[fmt(v),`${p.payload.count} devis`]} labelFormatter={(_,p)=>p[0]?.payload?.full||""} />
               <Bar dataKey="montant" radius={[4,4,0,0]}>{byStatut.map(e=><Cell key={e.full} fill={S_COLOR[e.full]||C.textSoft} opacity={0.9} />)}</Bar>
             </BarChart>
