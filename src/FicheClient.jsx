@@ -3,7 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 // Passer à false pour brancher Bubble
-const USE_MOCK    = false;
+const USE_MOCK    = true;
 const DASH_SECRET = "qd_x9k2m7p4nz3";
 // URL Bubble : version-test → sera automatiquement la live quand déployé
 // car le proxy /api/bubble dans vite.config pointe vers portail-qualidal.com
@@ -313,7 +313,7 @@ async function fetchClientData(clientName){
     date_validite:o.date_validite?o.date_validite.slice(0,10):null,
     montant_ht:montantByOffer[o._id]||0,
     is_active:o.is_active!==false,
-    items:itemsByOffer[o._id]||[],
+    items:(itemsByOffer[o._id]||[]).filter(Boolean),
   }));
 
   // Normalisation contacts
@@ -447,14 +447,14 @@ function DevisRow({d, idx}){
   return (
     <>
       {/* Ligne devis */}
-      <div onClick={()=>d.items.length&&setOpen(o=>!o)}
+      <div onClick={()=>(d.items||[]).length&&setOpen(o=>!o)}
         style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"11px 16px",
-          borderBottom:open&&d.items.length?`none`:`1px solid ${T.border}`,
-          alignItems:"center",opacity:d.is_active?1:0.55,cursor:d.items.length?"pointer":"default",
+          borderBottom:open&&(d.items||[]).length?`none`:`1px solid ${T.border}`,
+          alignItems:"center",opacity:d.is_active?1:0.55,cursor:(d.items||[]).length?"pointer":"default",
           background:open?T.indigoL:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s"}}
         onMouseEnter={e=>{if(!open)e.currentTarget.style.background=T.cardAlt;}}
-        onMouseLeave={e=>{if(!open)e.currentTarget.style.background=open?T.indigoL:idx%2===0?T.card:T.cardAlt;}}>
-        <span style={{color:T.textSoft,fontSize:11,textAlign:"center"}}>{d.items.length?open?"▲":"▼":""}</span>
+        onMouseLeave={e=>{e.currentTarget.style.background=open?T.indigoL:idx%2===0?T.card:T.cardAlt;}}>
+        <span style={{color:T.textSoft,fontSize:11,textAlign:"center"}}>{(d.items||[]).length?open?"▲":"▼":""}</span>
         <span style={{fontSize:11,color:T.textSoft,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.offer_number}</span>
         <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.project_name}</span>
         <Badge label={d.os_devis_statut}/>
@@ -468,14 +468,14 @@ function DevisRow({d, idx}){
         </div>
       </div>
       {/* Items accordéon */}
-      {open&&d.items.length>0&&(
+      {open&&(d.items||[]).length>0&&(
         <div style={{background:T.indigoL,borderBottom:`1px solid ${T.border}`,padding:"0 16px 10px 46px"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"6px 0",marginBottom:4,borderBottom:`1px solid ${T.border}`}}>
             {["Désignation","Qté","Unité","P.U. HT","Total HT"].map(h=>
               <span key={h} style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{h}</span>
             )}
           </div>
-          {d.items.map(item=>(
+          {(d.items||[]).map(item=>(
             <div key={item.id} style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"5px 0",borderBottom:`1px solid ${T.border}44`}}>
               <span style={{fontSize:12,color:T.text}}>{item.designation}</span>
               <span style={{fontSize:12,color:T.textMed,textAlign:"right"}}>{item.quantity}</span>
