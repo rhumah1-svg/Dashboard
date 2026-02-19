@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef, Component } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import FicheClient from './FicheClient';
+import TableContacts from "./TableContacts";
 import Login from './Login';
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
