@@ -758,7 +758,7 @@ export default function FicheClient({clientId, clientName}){
 
             {/* ── ONGLET CONTACTS ── */}
             {/* [5] Contact_projet liés aux projets du client */}
-            {activeTab==="contact"&&(
+            {activeTab==="contacts"&&(
               <Card title="Contacts de l'entreprise" accent={T.teal}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
                   {(contacts||[]).map(ct=>{
