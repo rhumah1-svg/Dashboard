@@ -234,7 +234,7 @@ async function fetchClientData(clientName){
     _cache.interventions || fetchAllPages("interventions").then(r=>{ _cache.interventions=r; return r; }),
     _cache.offers        || fetchAllPages("offers_history_documents").then(r=>{ _cache.offers=r; return r; }),
     _cache.items         || fetchAllPages("items_devis").then(r=>{ _cache.items=r; return r; }),
-    _cache.contacts      || fetchAllPages("contacts").then(r=>{ _cache.contacts=r; return r; }),
+    _cache.contacts      || fetchAllPages("contact").then(r=>{ _cache.contacts=r; return r; }),
   ]);
 
   // Filtres JS
