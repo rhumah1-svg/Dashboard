@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const DASH_SECRET = "qd_x9k2m7p4nz3";
 
-// ─── THÈME (identique FicheClient / App) ─────────────────────────────────────
+// ─── THÈME ────────────────────────────────────────────────────────────────────
 const T = {
   bg:"#F2F5F9", card:"#FFFFFF", cardAlt:"#F8FAFC",
   border:"#E3E9F2", borderMd:"#C8D4E3",
@@ -16,20 +16,17 @@ const T = {
   violet:"#7E5BB5", violetL:"#F2EDF9",
 };
 
-// ─── COULEURS TYPES DE CONTACT (Option Set Bubble OS_contact_type) ────────────
+// ─── COULEURS TYPE CONTACT ────────────────────────────────────────────────────
+// Valeurs exactes Option Set Bubble OS_contact_type
 const TYPE_COLOR = {
-  "Principal":           T.indigo,
-  "À mettre en copie":   T.amber,
-  "Contact sur site":    T.teal,
-  "Facturation":         T.violet,
-  "Autre - À préciser":  T.textSoft,
-  // Rétrocompat anciens labels
-  "Secondaire":    T.teal,
-  "Mise en copie": T.amber,
-  "Compta":        T.violet,
+  "Principal":          T.indigo,
+  "À mettre en copie":  T.amber,
+  "Contact sur site":   T.teal,
+  "Facturation":        T.violet,
+  "Autre - À préciser": T.textSoft,
 };
 
-const ALL_TYPES = ["Principal", "À mettre en copie", "Contact sur site", "Facturation", "Autre - À préciser"];
+const ALL_TYPES = Object.keys(TYPE_COLOR);
 
 // ─── FETCH BUBBLE ─────────────────────────────────────────────────────────────
 async function fetchAllPages(table) {
@@ -53,30 +50,31 @@ const normalizeType = v => {
 };
 
 // ─── FETCH CONTACTS ───────────────────────────────────────────────────────────
-// Tables :
-//   contact_projet  → Nom / role_contact_projet / email / phone / projet_contact_attache
-//   projects        → _id / _company_attached
-//   companies       → _id / name
+// Table : contacts
+// Champs :
+//   first_last_name  → nom complet
+//   email            → email
+//   phone            → téléphone
+//   _company_attached → lien vers Companies (_id)
+//   type_contact     → OS_contact_type
 async function fetchContacts() {
-  const [rawContacts, rawProjects, rawCompanies] = await Promise.all([
-    fetchAllPages("contact_projet"),
-    fetchAllPages("projects"),
+  const [rawContacts, rawCompanies] = await Promise.all([
+    fetchAllPages("contacts"),
     fetchAllPages("companies"),
   ]);
 
-  const companyById = Object.fromEntries(rawCompanies.map(c => [c._id, c.name || "—"]));
-  const companyNameByProject = Object.fromEntries(
-    rawProjects.map(p => [p._id, companyById[p._company_attached] || "—"])
+  // Index companies par _id → name
+  const companyById = Object.fromEntries(
+    rawCompanies.map(c => [c._id, c.name || "—"])
   );
 
   return rawContacts.map(c => ({
     id:                c._id,
-    first_last_name:   c.Nom || c.nom || c.name || "Sans nom",
-    type_contact:      normalizeType(c.role_contact_projet),
+    first_last_name:   c.first_last_name || c["first last name"] || c.name || "Sans nom",
+    type_contact:      normalizeType(c.type_contact),
     email:             c.email || "",
     phone:             c.phone || c.telephone || "",
-    _company_attached: companyNameByProject[c.projet_contact_attache] || "—",
-    _project_id:       c.projet_contact_attache || "",
+    _company_attached: companyById[c._company_attached] || "—",
   }));
 }
 
@@ -130,9 +128,8 @@ export default function TableContacts() {
   const [loading,  setLoading]  = useState(true);
   const [error,    setError]    = useState(null);
 
-  const [search,            setSearch]            = useState("");
-  const [selectedTypes,     setSelectedTypes]     = useState(new Set());
-  const [selectedCompanies, setSelectedCompanies] = useState(new Set());
+  const [search,         setSearch]         = useState("");
+  const [selectedTypes,  setSelectedTypes]  = useState(new Set());
   const [sortKey,  setSortKey]  = useState("first_last_name");
   const [sortDir,  setSortDir]  = useState("asc");
   const [selected, setSelected] = useState(new Set());
@@ -143,10 +140,7 @@ export default function TableContacts() {
       .catch(e   => { setError("Erreur chargement : " + e.message); setLoading(false); });
   }, []);
 
-  const allCompanies = useMemo(() =>
-    [...new Set(contacts.map(c => c._company_attached))].filter(c => c !== "—").sort()
-  , [contacts]);
-
+  // ── Filtrage + tri ────────────────────────────────────────────────────────
   const filtered = useMemo(() => {
     let rows = contacts.filter(c => {
       const q = search.toLowerCase().trim();
@@ -154,7 +148,6 @@ export default function TableContacts() {
             && !c.email.toLowerCase().includes(q)
             && !c._company_attached.toLowerCase().includes(q)) return false;
       if (selectedTypes.size > 0 && !selectedTypes.has(c.type_contact)) return false;
-      if (selectedCompanies.size > 0 && !selectedCompanies.has(c._company_attached)) return false;
       return true;
     });
     rows.sort((a, b) => {
@@ -163,27 +156,29 @@ export default function TableContacts() {
       return sortDir === "asc" ? va.localeCompare(vb, "fr") : vb.localeCompare(va, "fr");
     });
     return rows;
-  }, [contacts, search, selectedTypes, selectedCompanies, sortKey, sortDir]);
+  }, [contacts, search, selectedTypes, sortKey, sortDir]);
 
-  const toggleType    = t  => setSelectedTypes(p    => { const n=new Set(p); n.has(t)?n.delete(t):n.add(t); return n; });
-  const toggleCompany = co => setSelectedCompanies(p => { const n=new Set(p); n.has(co)?n.delete(co):n.add(co); return n; });
-  const toggleRow     = id => setSelected(p          => { const n=new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
-  const toggleAll     = () => selected.size === filtered.length
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const toggleType = t => setSelectedTypes(p => { const n=new Set(p); n.has(t)?n.delete(t):n.add(t); return n; });
+  const toggleRow  = id=> setSelected(p => { const n=new Set(p); n.has(id)?n.delete(id):n.add(id); return n; });
+  const toggleAll  = () => selected.size === filtered.length
     ? setSelected(new Set())
     : setSelected(new Set(filtered.map(r => r.id)));
+
   const onSort = key => {
     if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc");
     else { setSortKey(key); setSortDir("asc"); }
   };
 
-  const hasFilters   = !!(search || selectedTypes.size > 0 || selectedCompanies.size > 0);
-  const resetFilters = () => { setSearch(""); setSelectedTypes(new Set()); setSelectedCompanies(new Set()); };
-  const activeFilters= selectedTypes.size + selectedCompanies.size + (search ? 1 : 0);
-  const selectedRows = contacts.filter(c => selected.has(c.id));
-  const allChecked   = selected.size > 0 && selected.size === filtered.length;
-  const someChecked  = selected.size > 0 && selected.size < filtered.length;
-  const today        = new Date().toISOString().slice(0, 10);
+  const hasFilters  = !!(search || selectedTypes.size > 0);
+  const resetFilters= () => { setSearch(""); setSelectedTypes(new Set()); };
+  const activeCount = selectedTypes.size + (search ? 1 : 0);
+  const selectedRows= contacts.filter(c => selected.has(c.id));
+  const allChecked  = selected.size > 0 && selected.size === filtered.length;
+  const someChecked = selected.size > 0 && selected.size < filtered.length;
+  const today       = new Date().toISOString().slice(0, 10);
 
+  // ── États loading / erreur ────────────────────────────────────────────────
   if (loading) return (
     <div style={{ display:"flex", alignItems:"center", justifyContent:"center", minHeight:"60vh", fontFamily:"'Nunito','Segoe UI',sans-serif" }}>
       <div style={{ textAlign:"center" }}>
@@ -213,7 +208,7 @@ export default function TableContacts() {
         ::-webkit-scrollbar{width:5px;height:5px;}
         ::-webkit-scrollbar-track{background:${T.bg};}
         ::-webkit-scrollbar-thumb{background:${T.borderMd};border-radius:3px;}
-        input,select{font-family:'Nunito','Segoe UI',sans-serif;}
+        input{font-family:'Nunito','Segoe UI',sans-serif;}
         .tc-row:hover{background:${T.cardAlt} !important;}
         .tc-row.sel{background:${T.indigoL} !important;}
         .tc-sort{cursor:pointer;user-select:none;display:flex;align-items:center;}
@@ -260,15 +255,16 @@ export default function TableContacts() {
             {hasFilters && (
               <button onClick={resetFilters}
                 style={{ padding:"9px 14px", borderRadius:8, border:`1px solid ${T.rose}40`, background:T.roseL, color:T.rose, fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap" }}>
-                ✕ Reset{activeFilters > 0 ? ` (${activeFilters})` : ""}
+                ✕ Reset{activeCount > 0 ? ` (${activeCount})` : ""}
               </button>
             )}
           </div>
+
           {/* Filtre type */}
-          <div style={{ marginBottom:10, display:"flex", alignItems:"center", flexWrap:"wrap", gap:6 }}>
+          <div style={{ display:"flex", alignItems:"center", flexWrap:"wrap", gap:6 }}>
             <span style={{ fontSize:10, color:T.textSoft, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", marginRight:4, flexShrink:0 }}>Type</span>
             {ALL_TYPES.map(t => {
-              const c = TYPE_COLOR[t] || T.textSoft;
+              const c      = TYPE_COLOR[t] || T.textSoft;
               const active = selectedTypes.has(t);
               const count  = contacts.filter(ct => ct.type_contact === t).length;
               return (
@@ -282,29 +278,13 @@ export default function TableContacts() {
               );
             })}
           </div>
-          {/* Filtre entreprise */}
-          <div style={{ display:"flex", alignItems:"flex-start", flexWrap:"wrap", gap:6 }}>
-            <span style={{ fontSize:10, color:T.textSoft, fontWeight:700, textTransform:"uppercase", letterSpacing:"0.07em", marginRight:4, flexShrink:0, marginTop:5 }}>Entreprise</span>
-            {allCompanies.map(co => {
-              const active = selectedCompanies.has(co);
-              const count  = contacts.filter(ct => ct._company_attached === co).length;
-              return (
-                <span key={co} className="tc-pill" onClick={() => toggleCompany(co)}
-                  style={{ fontSize:11, fontWeight:600, padding:"4px 10px", borderRadius:20,
-                    color: active ? "#fff" : T.textMed,
-                    background: active ? T.text : T.cardAlt,
-                    border: `1.5px solid ${active ? T.text : T.border}` }}>
-                  {co} <span style={{ opacity:0.6 }}>({count})</span>{active && " ✓"}
-                </span>
-              );
-            })}
-          </div>
         </div>
 
         {/* TABLE */}
         <div style={{ background:T.card, border:`1px solid ${T.border}`, borderRadius:12, overflow:"hidden", boxShadow:"0 2px 6px rgba(0,0,0,0.04)" }}>
+
           {/* En-têtes */}
-          <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 160px 220px 170px 150px", gap:12, padding:"10px 16px", background:T.cardAlt, borderBottom:`2px solid ${T.border}` }}>
+          <div style={{ display:"grid", gridTemplateColumns:"40px 1fr 160px 220px 200px 150px", gap:12, padding:"10px 16px", background:T.cardAlt, borderBottom:`2px solid ${T.border}` }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
               <input type="checkbox" checked={allChecked}
                 ref={el => { if (el) el.indeterminate = someChecked; }}
@@ -326,7 +306,7 @@ export default function TableContacts() {
           </div>
 
           {/* Lignes */}
-          <div style={{ maxHeight:600, overflowY:"auto" }}>
+          <div style={{ maxHeight:620, overflowY:"auto" }}>
             {filtered.length === 0 ? (
               <div style={{ padding:"40px 32px", textAlign:"center", color:T.textSoft, fontSize:13 }}>
                 <div style={{ fontSize:32, marginBottom:10 }}>🔍</div>
@@ -337,29 +317,35 @@ export default function TableContacts() {
               const isSel     = selected.has(c.id);
               return (
                 <div key={c.id} className={`tc-row${isSel ? " sel" : ""}`}
-                  style={{ display:"grid", gridTemplateColumns:"40px 1fr 160px 220px 170px 150px", gap:12, padding:"11px 16px",
+                  style={{ display:"grid", gridTemplateColumns:"40px 1fr 160px 220px 200px 150px", gap:12, padding:"11px 16px",
                     background: isSel ? T.indigoL : idx % 2 === 0 ? T.card : T.cardAlt,
                     borderBottom:`1px solid ${T.border}`, alignItems:"center", transition:"background 0.1s" }}>
+
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"center" }}>
                     <input type="checkbox" checked={isSel} onChange={() => toggleRow(c.id)}
                       style={{ cursor:"pointer", accentColor:T.indigo }} />
                   </div>
+
                   <div style={{ display:"flex", alignItems:"center", gap:10, minWidth:0 }}>
                     <Avatar name={c.first_last_name} color={typeColor} />
                     <span style={{ fontSize:13, fontWeight:700, color:T.text, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                       {c.first_last_name}
                     </span>
                   </div>
+
                   <div><Badge label={c.type_contact} /></div>
+
                   <span style={{ fontSize:12, color:T.textMed, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                    🏢 {c._company_attached}
+                    {c._company_attached !== "—" ? `🏢 ${c._company_attached}` : <span style={{ color:T.border }}>—</span>}
                   </span>
+
                   <a href={`mailto:${c.email}`}
-                    style={{ fontSize:12, color:T.indigo, textDecoration:"none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block" }}
+                    style={{ fontSize:12, color: c.email ? T.indigo : T.border, textDecoration:"none", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", display:"block" }}
                     title={c.email}>
                     {c.email || "—"}
                   </a>
-                  <a href={`tel:${c.phone}`} style={{ fontSize:12, color:T.textMed, textDecoration:"none" }}>
+
+                  <a href={`tel:${c.phone}`} style={{ fontSize:12, color: c.phone ? T.textMed : T.border, textDecoration:"none" }}>
                     {c.phone || "—"}
                   </a>
                 </div>
