@@ -796,7 +796,7 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
 
         {/* Nav tabs */}
         <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
-          {[["devis","📋 Devis"],["interventions","🔧 Interventions"],["clients","🏢 Clients"]].map(([key,label])=>{
+          {[["devis","📋 Devis"],["interventions","🔧 Interventions"],["clients","🏢 Clients"]],["contacts","📇 Contacts"]].map(([key,label])=>{
             const active = key==="clients" ? isClients : (isDashboard && tab===key);
             return (
               <button key={key} onClick={()=>handleNavClick(key)}
