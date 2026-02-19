@@ -241,15 +241,33 @@ async function fetchClientData(clientName){
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
   const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
-  // Champ Bubble : "_company-attached" (tiret, pas underscore → accès avec bracket notation)
+  // ── LOG BRUT CONTACTS ────────────────────────────────────────────────────────
+  console.log("[FC] companyId cherché:", companyId);
+  console.log("[FC] contacts total dans Bubble:", rawContacts.length);
+  if(rawContacts.length>0){
+    console.log("[FC] TOUS LES CHAMPS contact[0]:", Object.keys(rawContacts[0]));
+    console.log("[FC] contact[0] complet:", JSON.stringify(rawContacts[0]));
+    if(rawContacts[1]) console.log("[FC] contact[1] complet:", JSON.stringify(rawContacts[1]));
+  }
+  // Teste tous les noms possibles du champ company
   const rawContactsF = rawContacts.filter(c=>{
-    const ca = c["_company-attached"];
-    if(!ca) return false;
-    if(typeof ca==="string") return ca===companyId;
-    if(typeof ca==="object") return ca._id===companyId||ca.id===companyId;
-    return false;
+    const candidates = [
+      c["_company-attached"],
+      c["_company_attached"],
+      c["company_attached"],
+      c["company-attached"],
+      c["company"],
+      c["entreprise"],
+      c["client"],
+    ];
+    return candidates.some(v=>{
+      if(!v) return false;
+      if(typeof v==="string") return v===companyId;
+      if(typeof v==="object") return v._id===companyId||v.id===companyId;
+      return false;
+    });
   });
-  console.log("[FC] contacts:", rawContactsF.length, "/", rawContacts.length);
+  console.log("[FC] contacts filtrés:", rawContactsF.length);
 
   // Items groupés par devis (pour affichage accordéon dans onglet Devis)
   const itemsByOffer = {};
