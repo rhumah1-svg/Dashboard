@@ -1,3 +1,7 @@
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/api/auth",   "destination": "/api/auth" },
+    { "source": "/api/bubble", "destination": "/api/bubble" },
+    { "source": "/(.*)",       "destination": "/index.html" }
+  ]
 }
