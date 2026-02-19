@@ -3,7 +3,6 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   if (req.method === "OPTIONS") { res.status(200).end(); return; }
 
-  // Vérification token secret — bloque toute requête sans le bon secret
   const secret = req.query.secret;
   if (!secret || secret !== process.env.DASHBOARD_SECRET) {
     res.status(401).json({ error: "Unauthorized" });
@@ -13,7 +12,16 @@ export default async function handler(req, res) {
   const { table, cursor = 0 } = req.query;
   if (!table) { res.status(400).json({ error: "Missing table" }); return; }
 
-  // Token Bubble lu depuis variable d'environnement — jamais exposé au client
+  const ALLOWED_TABLES = [
+    "companies", "projects", "interventions",
+    "offers_history_documents", "items_devis",
+    "contacts", "contact_projet", "user"
+  ];
+  if (!ALLOWED_TABLES.includes(table)) {
+    res.status(403).json({ error: "Table non autorisée" });
+    return;
+  }
+
   const token = process.env.BUBBLE_API_KEY;
   if (!token) { res.status(500).json({ error: "API key not configured" }); return; }
 
