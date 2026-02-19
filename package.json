@@ -1,6 +1,6 @@
 {
   "name": "qualidal-dashboard",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -8,7 +8,8 @@
     "recharts": "^2.10.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "vercel dev",
+    "dev:vite": "vite",
     "build": "vite build"
   },
   "devDependencies": {
