@@ -1,15 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
-// â”€â”€â”€ CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Passer Ã  false pour brancher Bubble
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+// Passer à false pour brancher Bubble
 const USE_MOCK    = true;
 const DASH_SECRET = "qd_x9k2m7p4nz3";
-// URL Bubble : version-test â†’ sera automatiquement la live quand dÃ©ployÃ©
+// URL Bubble : version-test → sera automatiquement la live quand déployé
 // car le proxy /api/bubble dans vite.config pointe vers portail-qualidal.com
-// â”€â”€ Pour passer en live : changer /version-test/api â†’ /api dans vite.config â”€â”€
+// ── Pour passer en live : changer /version-test/api → /api dans vite.config ──
 
-// â”€â”€â”€ THÃˆME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── THÈME ────────────────────────────────────────────────────────────────────
 const T = {
   bg:"#F2F5F9", card:"#FFFFFF", cardAlt:"#F8FAFC",
   border:"#E3E9F2", borderMd:"#C8D4E3",
@@ -26,85 +26,85 @@ const T = {
 
 const S_COLOR = {
   "Saisie d'information":T.textSoft, "Chiffrage en cours":T.sky,
-  "ValidÃ© par l'administration":T.violet, "Devis envoyÃ©":T.indigo,
-  "Devis signÃ©":T.sage, "Projet terminÃ©":"#2E7A4E",
-  "A relancer":T.amber, "Relance envoyÃ©e":T.coral,
-  "ClassÃ© sans suite":T.rose, "Non formalisÃ©":T.textSoft,
-  "PlanifiÃ©":T.violet, "En cours":T.amber, "TerminÃ©":T.sage, "AnnulÃ©":T.rose,
+  "Validé par l'administration":T.violet, "Devis envoyé":T.indigo,
+  "Devis signé":T.sage, "Projet terminé":"#2E7A4E",
+  "A relancer":T.amber, "Relance envoyée":T.coral,
+  "Classé sans suite":T.rose, "Non formalisé":T.textSoft,
+  "Planifié":T.violet, "En cours":T.amber, "Terminé":T.sage, "Annulé":T.rose,
 };
 
-// â”€â”€ OS_contact_type options (Bubble option set) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Valeurs exactes : Principal / Ã€ mettre en copie / Contact sur site / Facturation / Autre - Ã€ prÃ©ciser
+// ── OS_contact_type options (Bubble option set) ──────────────────────────────
+// Valeurs exactes : Principal / À mettre en copie / Contact sur site / Facturation / Autre - À préciser
 const TYPE_CONTACT_COLOR = {
   "Principal":          T.indigo,
-  "Ã€ mettre en copie":  T.amber,
+  "À mettre en copie":  T.amber,
   "Contact sur site":   T.teal,
   "Facturation":        T.violet,
-  "Autre - Ã€ prÃ©ciser": T.textSoft,
-  // Anciens labels mock (rÃ©trocompat)
+  "Autre - À préciser": T.textSoft,
+  // Anciens labels mock (rétrocompat)
   "Secondaire":T.teal, "Mise en copie":T.amber, "Compta":T.violet,
 };
 
-const HISTORIQUE_COLOR = { Appel:T.sage, Email:T.indigo, RÃ©union:T.violet, Note:T.amber };
+const HISTORIQUE_COLOR = { Appel:T.sage, Email:T.indigo, Réunion:T.violet, Note:T.amber };
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-// â–ˆâ–ˆ LIAISONS BUBBLE â€” MODIFIE ICI POUR CHANGER LES SOURCES DE DONNÃ‰ES â–ˆâ–ˆ
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════════════════════
+// ██ LIAISONS BUBBLE — MODIFIE ICI POUR CHANGER LES SOURCES DE DONNÉES ██
+// ════════════════════════════════════════════════════════════════════════════════
 //
 // [1] CLIENT (table: Companies)
-//     Champ nom       â†’ company.name
-//     Champ adresse   â†’ company.address  (si tu ajoutes ce champ dans Bubble)
-//     Champ tel       â†’ company.phone    (si tu ajoutes ce champ dans Bubble)
-//     Champ email     â†’ company.email    (si tu ajoutes ce champ dans Bubble)
-//     Champ siret     â†’ company.siret    (si tu ajoutes ce champ dans Bubble)
-//     Champ crÃ©Ã© le   â†’ company["Created Date"]
+//     Champ nom       → company.name
+//     Champ adresse   → company.address  (si tu ajoutes ce champ dans Bubble)
+//     Champ tel       → company.phone    (si tu ajoutes ce champ dans Bubble)
+//     Champ email     → company.email    (si tu ajoutes ce champ dans Bubble)
+//     Champ siret     → company.siret    (si tu ajoutes ce champ dans Bubble)
+//     Champ créé le   → company["Created Date"]
 //
 // [2] PROJETS (table: Projects)
-//     Liaison client  â†’ project._company_attached === company._id
-//     Champ nom       â†’ project.name
-//     Champ statut    â†’ project.OS_devis_status
-//     Champ type      â†’ project.OS_prestations_type
-//     Champ code      â†’ project.project_code
+//     Liaison client  → project._company_attached === company._id
+//     Champ nom       → project.name
+//     Champ statut    → project.OS_devis_status
+//     Champ type      → project.OS_prestations_type
+//     Champ code      → project.project_code
 //
 // [3] DEVIS (table: Offers_history_documents)
-//     Liaison projet  â†’ offer._project_attached === project._id
-//     Champ numÃ©ro    â†’ offer.offer_number  (ex: devis_de00001898)
-//     Champ statut    â†’ offer.os_devis_statut
-//     Champ date      â†’ offer.date_offre
-//     Champ validitÃ©  â†’ offer.date_validite
-//     Champ montant   â†’ calculÃ© depuis Items_devis (sum Total_HT)
-//     Champ actif     â†’ offer.is_active
+//     Liaison projet  → offer._project_attached === project._id
+//     Champ numéro    → offer.offer_number  (ex: devis_de00001898)
+//     Champ statut    → offer.os_devis_statut
+//     Champ date      → offer.date_offre
+//     Champ validité  → offer.date_validite
+//     Champ montant   → calculé depuis Items_devis (sum Total_HT)
+//     Champ actif     → offer.is_active
 //
 // [4] INTERVENTIONS (table: interventions)
-//     Liaison projet  â†’ intervention._project_attached === project._id
-//     Champ nom       â†’ intervention.name
-//     Champ statut    â†’ intervention.intervention_status
-//     Champ date      â†’ intervention.date
-//     Champ type      â†’ intervention.OS_prestations_type
+//     Liaison projet  → intervention._project_attached === project._id
+//     Champ nom       → intervention.name
+//     Champ statut    → intervention.intervention_status
+//     Champ date      → intervention.date
+//     Champ type      → intervention.OS_prestations_type
 //
 // [5] CONTACTS PROJET (table: Contact_projet)
-//     Liaison projet  â†’ contact_projet.projet_contact_attache === project._id
-//     Champ contact   â†’ contact_projet.contact_projet_attache (lien vers Contacts)
-//     Champ rÃ´le      â†’ contact_projet.role_contact_projet
-//     Champ email     â†’ contact_projet.email
-//     Champ nom       â†’ contact_projet.Nom
+//     Liaison projet  → contact_projet.projet_contact_attache === project._id
+//     Champ contact   → contact_projet.contact_projet_attache (lien vers Contacts)
+//     Champ rôle      → contact_projet.role_contact_projet
+//     Champ email     → contact_projet.email
+//     Champ nom       → contact_projet.Nom
 //
-// [6] CONTACTS ENTREPRISE (table: Contacts â€” contacts gÃ©nÃ©raux de la sociÃ©tÃ©)
-//     Liaison client  â†’ Ã  dÃ©finir selon ton modÃ¨le Bubble
-//     (actuellement mockÃ©s dans MOCK_CONTACTS, rattachÃ©s Ã  la company)
+// [6] CONTACTS ENTREPRISE (table: Contacts — contacts généraux de la société)
+//     Liaison client  → à définir selon ton modèle Bubble
+//     (actuellement mockés dans MOCK_CONTACTS, rattachés à la company)
 //
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+// ════════════════════════════════════════════════════════════════════════════════
 
-// â”€â”€â”€ MOCK DATA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// [1] CLIENT â€” source: table Companies
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+// [1] CLIENT — source: table Companies
 const MOCK_CLIENT = {
   id:"c1", name:"IDEC Construction",
-  address:"14 rue de la RÃ©publique, 75001 Paris",
+  address:"14 rue de la République, 75001 Paris",
   phone:"+33 1 42 86 54 00", email:"contact@idec-construction.fr",
   siret:"412 345 678 00021", created:"2021-03-15",
 };
 
-// [5] CONTACTS PROJET â€” source: table Contact_projet
+// [5] CONTACTS PROJET — source: table Contact_projet
 const MOCK_CONTACTS = [
   { id:"ct1", name:"Jean-Eudes Gohard", type:"Principal",       email:"je.gohard@idec.fr",  phone:"+33 6 12 34 56 78" },
   { id:"ct2", name:"Marie Fontaine",    type:"Mise en copie",   email:"m.fontaine@idec.fr", phone:"+33 6 98 76 54 32" },
@@ -112,62 +112,62 @@ const MOCK_CONTACTS = [
   { id:"ct4", name:"Sophie Leroux",     type:"Secondaire",      email:"s.leroux@idec.fr",   phone:"+33 6 55 44 33 22" },
 ];
 
-// [2] PROJETS â€” source: table Projects (filtrÃ©s par _company_attached)
-// [4] INTERVENTIONS â€” source: table interventions (imbriquÃ©es dans chaque projet)
+// [2] PROJETS — source: table Projects (filtrés par _company_attached)
+// [4] INTERVENTIONS — source: table interventions (imbriquées dans chaque projet)
 const MOCK_PROJECTS = [
   {
-    id:"p1", name:"AREFIM - REIMS (51)", status:"Devis signÃ©",
+    id:"p1", name:"AREFIM - REIMS (51)", status:"Devis signé",
     type:"Dallage", address:"Zone Industrielle Nord, 51100 Reims",
     ca_total:185400, avancement:0.67,
     interventions:[
-      { id:"i1", name:"Reprise fissures dalle",    status:"TerminÃ©",  date:"2025-01-15", agents:["Pierre Martin","Lucas Bernard"], rapport:"Sophie Durand" },
+      { id:"i1", name:"Reprise fissures dalle",    status:"Terminé",  date:"2025-01-15", agents:["Pierre Martin","Lucas Bernard"], rapport:"Sophie Durand" },
       { id:"i2", name:"Traitement surface",         status:"En cours", date:"2025-03-10", agents:["Lucas Bernard"],                 rapport:"Sophie Durand" },
-      { id:"i3", name:"Reprise joint dilatation",   status:"PlanifiÃ©", date:"2025-04-22", agents:["Pierre Martin","Ali Benali"],    rapport:"Marc Dupont"   },
+      { id:"i3", name:"Reprise joint dilatation",   status:"Planifié", date:"2025-04-22", agents:["Pierre Martin","Ali Benali"],    rapport:"Marc Dupont"   },
     ],
   },
   {
     id:"p2", name:"LOGISTIQUE SENLIS (60)", status:"Chiffrage en cours",
-    type:"RÃ©paration bÃ©ton", address:"Parc Logistique, 60300 Senlis",
+    type:"Réparation béton", address:"Parc Logistique, 60300 Senlis",
     ca_total:67200, avancement:0.15,
     interventions:[
-      { id:"i4", name:"Diagnostic structure", status:"TerminÃ©",  date:"2025-02-01", agents:["Ali Benali"],    rapport:"Marc Dupont"   },
-      { id:"i5", name:"Injection rÃ©sine",     status:"PlanifiÃ©", date:"2025-05-10", agents:["Pierre Martin"], rapport:"Sophie Durand" },
+      { id:"i4", name:"Diagnostic structure", status:"Terminé",  date:"2025-02-01", agents:["Ali Benali"],    rapport:"Marc Dupont"   },
+      { id:"i5", name:"Injection résine",     status:"Planifié", date:"2025-05-10", agents:["Pierre Martin"], rapport:"Sophie Durand" },
     ],
   },
   {
-    id:"p3", name:"ENTREPÃ”T ROISSY (95)", status:"Devis envoyÃ©",
-    type:"Marquage sol", address:"AÃ©roport CDG, Zone Fret, 95700 Roissy",
+    id:"p3", name:"ENTREPÔT ROISSY (95)", status:"Devis envoyé",
+    type:"Marquage sol", address:"Aéroport CDG, Zone Fret, 95700 Roissy",
     ca_total:42800, avancement:0, interventions:[],
   },
 ];
 
-// [3] DEVIS â€” source: table Offers_history_documents (filtrÃ©s via projets du client)
+// [3] DEVIS — source: table Offers_history_documents (filtrés via projets du client)
 const MOCK_DEVIS = [
-  { id:"d1", offer_number:"devis_de00001898", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis signÃ©",          date_offre:"2025-01-10", date_validite:"2025-06-20", montant_ht:48200,  is_active:true  },
-  { id:"d2", offer_number:"devis_de00001901", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis envoyÃ©",         date_offre:"2024-12-01", date_validite:"2025-03-01", montant_ht:22000,  is_active:false },
+  { id:"d1", offer_number:"devis_de00001898", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis signé",          date_offre:"2025-01-10", date_validite:"2025-06-20", montant_ht:48200,  is_active:true  },
+  { id:"d2", offer_number:"devis_de00001901", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis envoyé",         date_offre:"2024-12-01", date_validite:"2025-03-01", montant_ht:22000,  is_active:false },
   { id:"d3", offer_number:"devis_de00001910", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)", os_devis_statut:"Chiffrage en cours",   date_offre:"2025-02-15", date_validite:"2025-07-15", montant_ht:67200,  is_active:true  },
-  { id:"d4", offer_number:"devis_de00001918", project_id:"p3", project_name:"ENTREPÃ”T ROISSY (95)",   os_devis_statut:"Devis envoyÃ©",         date_offre:"2025-03-01", date_validite:"2025-06-25", montant_ht:42800,  is_active:true  },
-  { id:"d5", offer_number:"devis_de00001925", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)", os_devis_statut:"ClassÃ© sans suite",    date_offre:"2024-11-10", date_validite:"2025-01-10", montant_ht:31000,  is_active:false },
+  { id:"d4", offer_number:"devis_de00001918", project_id:"p3", project_name:"ENTREPÔT ROISSY (95)",   os_devis_statut:"Devis envoyé",         date_offre:"2025-03-01", date_validite:"2025-06-25", montant_ht:42800,  is_active:true  },
+  { id:"d5", offer_number:"devis_de00001925", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)", os_devis_statut:"Classé sans suite",    date_offre:"2024-11-10", date_validite:"2025-01-10", montant_ht:31000,  is_active:false },
 ];
 
-// HISTORIQUE â€” source: Ã  crÃ©er dans Bubble si besoin (table CRM_historique par ex.)
+// HISTORIQUE — source: à créer dans Bubble si besoin (table CRM_historique par ex.)
 const MOCK_HISTORIQUE_INIT = [
-  { id:"h1", date:"2025-02-14", type:"Appel",   auteur:"ST",  note:"Relance devis AREFIM â€” client confirme signature prochaine semaine." },
-  { id:"h2", date:"2025-01-28", type:"Email",   auteur:"AM",  note:"Envoi devis actualisÃ© suite demande modification quantitÃ©s." },
-  { id:"h3", date:"2025-01-10", type:"RÃ©union", auteur:"ST",  note:"RÃ©union de chantier sur site Reims. Points : planning T1, accÃ¨s zone sud." },
+  { id:"h1", date:"2025-02-14", type:"Appel",   auteur:"ST",  note:"Relance devis AREFIM — client confirme signature prochaine semaine." },
+  { id:"h2", date:"2025-01-28", type:"Email",   auteur:"AM",  note:"Envoi devis actualisé suite demande modification quantités." },
+  { id:"h3", date:"2025-01-10", type:"Réunion", auteur:"ST",  note:"Réunion de chantier sur site Reims. Points : planning T1, accès zone sud." },
   { id:"h4", date:"2024-12-05", type:"Appel",   auteur:"MEM", note:"Premier contact pour le projet Senlis. RDV pris pour le 15/01." },
 ];
 
-// â”€â”€â”€ UTILS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── UTILS ────────────────────────────────────────────────────────────────────
 const fmt     = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
-const fmtDate = d => d ? new Date(d).toLocaleDateString("fr-FR") : "â€”";
+const fmtDate = d => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 const diffDays= d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
 
-// â”€â”€â”€ FETCH BUBBLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// StratÃ©gie performance : 2 phases sÃ©quentielles
+// ─── FETCH BUBBLE ─────────────────────────────────────────────────────────────
+// Stratégie performance : 2 phases séquentielles
 //   Phase 1 : companies + projects (petit volume, rapide)
-//   Phase 2 : interventions + offers + items + contacts, filtrÃ©s en JS
-// Cache mÃ©moire pour Ã©viter de tout recharger si on revient sur la fiche
+//   Phase 2 : interventions + offers + items + contacts, filtrés en JS
+// Cache mémoire pour éviter de tout recharger si on revient sur la fiche
 let _cache = {};
 
 async function fetchAllPages(table){
@@ -191,18 +191,18 @@ const extractAddr = v => {
   return "";
 };
 
-// Normalise le type de contact (Option Set Bubble â†’ string display)
+// Normalise le type de contact (Option Set Bubble → string display)
 const normalizeType = v => {
-  if(!v) return "Autre - Ã€ prÃ©ciser";
+  if(!v) return "Autre - À préciser";
   if(typeof v==="string") return v;
-  if(typeof v==="object") return v.display||v.name||"Autre - Ã€ prÃ©ciser";
+  if(typeof v==="object") return v.display||v.name||"Autre - À préciser";
   return String(v);
 };
 
 async function fetchClientData(clientName){
   console.log("[FC] fetch:", clientName);
 
-  // â”€â”€ Phase 1 : tables lÃ©gÃ¨res â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Phase 1 : tables légères ──────────────────────────────────────────────
   const [rawCompanies, rawProjects] = await Promise.all([
     _cache.companies  || fetchAllPages("companies").then(r=>{ _cache.companies=r; return r; }),
     _cache.projects   || fetchAllPages("projects").then(r=>{ _cache.projects=r; return r; }),
@@ -229,7 +229,7 @@ async function fetchClientData(clientName){
     };
   }
 
-  // â”€â”€ Phase 2 : tables volumineuses (parallÃ¨le) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Phase 2 : tables volumineuses (parallèle) ─────────────────────────────
   const [rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all([
     _cache.interventions || fetchAllPages("interventions").then(r=>{ _cache.interventions=r; return r; }),
     _cache.offers        || fetchAllPages("offers_history_documents").then(r=>{ _cache.offers=r; return r; }),
@@ -247,7 +247,7 @@ async function fetchClientData(clientName){
   console.log("[FC] contacts filtrés:", rawContactsF.length);
   console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts:", rawContactsF.length);
 
-  // Items groupÃ©s par devis (pour affichage accordÃ©on dans onglet Devis)
+  // Items groupés par devis (pour affichage accordéon dans onglet Devis)
   const itemsByOffer = {};
   rawItemsF.forEach(item=>{
     const oid = item.offer_document_item;
@@ -280,7 +280,7 @@ async function fetchClientData(clientName){
     if(pid){ denomByProj[pid]=(denomByProj[pid]||0)+ht; if(isI) numByProj[pid]=(numByProj[pid]||0)+ht; }
   });
 
-  // Interventions groupÃ©es par projet
+  // Interventions groupées par projet
   const intervByProj={};
   rawIntervF.forEach(i=>{
     const pid=i._project_attached;
@@ -288,7 +288,7 @@ async function fetchClientData(clientName){
     intervByProj[pid].push({
       id:i._id,
       name:i.name||"Sans nom",
-      status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"â€”",
+      status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"—",
       date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
     });
   });
@@ -330,7 +330,7 @@ async function fetchClientData(clientName){
   }));
 
   // Normalisation company
-  // â”€â”€ CHAMPS BUBBLE : adresse_texte / phone / email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── CHAMPS BUBBLE : adresse_texte / phone / email ─────────────────────────
   const client = {
     id:company._id, name:company.name||clientName,
     address:company.adresse_texte||extractAddr(company.address)||"",
@@ -340,11 +340,11 @@ async function fetchClientData(clientName){
     created:company["Created Date"]?.slice(0,10)||"",
   };
 
-  console.log("[FC] OK âœ“");
+  console.log("[FC] OK ✓");
   return { client, projets, devis, contacts };
 }
 
-// â”€â”€â”€ COMPOSANTS UI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── COMPOSANTS UI ────────────────────────────────────────────────────────────
 function Badge({label,color}){
   const c=color||S_COLOR[label]||T.textSoft;
   return <span style={{fontSize:11,fontWeight:600,padding:"3px 9px",borderRadius:20,color:c,background:`${c}18`,border:`1px solid ${c}30`,whiteSpace:"nowrap"}}>{label}</span>;
@@ -384,7 +384,7 @@ function StatPill({label,value,color}){
   );
 }
 
-// â”€â”€â”€ ACCORDÃ‰ON PROJET â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ACCORDÉON PROJET ─────────────────────────────────────────────────────────
 function ProjetAccordeon({projet}){
   const [open,setOpen]=useState(false);
   return (
@@ -395,31 +395,31 @@ function ProjetAccordeon({projet}){
         onMouseLeave={e=>{if(!open)e.currentTarget.style.background=T.card;}}>
         <div>
           <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:3}}>{projet.name}</div>
-          <div style={{fontSize:11,color:T.textSoft}}>{projet.type} Â· {projet.address}</div>
+          <div style={{fontSize:11,color:T.textSoft}}>{projet.type} · {projet.address}</div>
         </div>
         <Badge label={projet.status}/>
         <span style={{fontSize:13,fontWeight:700,color:T.indigo,textAlign:"right"}}>{fmt(projet.ca_total)}</span>
         <ProgressBar value={projet.avancement}/>
-        <span style={{color:T.textSoft,fontSize:13,textAlign:"center"}}>{open?"â–²":"â–¼"}</span>
+        <span style={{color:T.textSoft,fontSize:13,textAlign:"center"}}>{open?"▲":"▼"}</span>
       </div>
 
       {open&&(
         <div style={{background:T.bg,borderTop:`1px solid ${T.border}`}}>
-          {/* [4] INTERVENTIONS â€” liaison: intervention._project_attached === projet.id */}
+          {/* [4] INTERVENTIONS — liaison: intervention._project_attached === projet.id */}
           {(projet.interventions||[]).length===0
-            ?<div style={{padding:"20px 16px",fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucune intervention enregistrÃ©e</div>
+            ?<div style={{padding:"20px 16px",fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucune intervention enregistrée</div>
             :(projet.interventions||[]).map((interv,idx)=>{
               const jours=diffDays(interv.date);
-              const dateColor=interv.status==="PlanifiÃ©"?(jours<=7?T.rose:T.violet):T.textSoft;
+              const dateColor=interv.status==="Planifié"?(jours<=7?T.rose:T.violet):T.textSoft;
               return (
                 <div key={interv.id}
                   style={{display:"grid",gridTemplateColumns:"26px 1fr 110px 130px 1fr 1fr",gap:10,padding:"11px 16px",alignItems:"center",borderBottom:idx<projet.interventions.length-1?`1px solid ${T.border}`:"none",background:idx%2===0?T.card:T.cardAlt}}>
                   <div style={{width:8,height:8,borderRadius:"50%",background:S_COLOR[interv.status]||T.textSoft,margin:"0 auto",flexShrink:0}}/>
                   <span style={{fontSize:12,color:T.text,fontWeight:600}}>{interv.name}</span>
                   <Badge label={interv.status}/>
-                  <span style={{fontSize:11,color:dateColor,fontWeight:interv.status==="PlanifiÃ©"?700:400}}>
+                  <span style={{fontSize:11,color:dateColor,fontWeight:interv.status==="Planifié"?700:400}}>
                     {fmtDate(interv.date)}
-                    {interv.status==="PlanifiÃ©"&&jours!==null&&<span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>}
+                    {interv.status==="Planifié"&&jours!==null&&<span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>}
                   </span>
                   <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                     {(interv.agents||[]).map(a=><span key={a} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>{a}</span>)}
@@ -442,7 +442,7 @@ function ProjetAccordeon({projet}){
   );
 }
 
-// â”€â”€â”€ ONGLET DEVIS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── ONGLET DEVIS ─────────────────────────────────────────────────────────────
 function DevisRow({d, idx}){
   const [open,setOpen] = useState(false);
   const exp=diffDays(d.date_validite);
@@ -457,24 +457,24 @@ function DevisRow({d, idx}){
           background:open?T.indigoL:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s"}}
         onMouseEnter={e=>{if(!open)e.currentTarget.style.background=T.cardAlt;}}
         onMouseLeave={e=>{e.currentTarget.style.background=open?T.indigoL:idx%2===0?T.card:T.cardAlt;}}>
-        <span style={{color:T.textSoft,fontSize:11,textAlign:"center"}}>{(d.items||[]).length?open?"â–²":"â–¼":""}</span>
+        <span style={{color:T.textSoft,fontSize:11,textAlign:"center"}}>{(d.items||[]).length?open?"▲":"▼":""}</span>
         <span style={{fontSize:11,color:T.textSoft,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.offer_number}</span>
         <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.project_name}</span>
         <Badge label={d.os_devis_statut}/>
         <span style={{fontSize:13,fontWeight:700,color:T.text,textAlign:"right"}}>{fmt(d.montant_ht)}</span>
         <div>
           <div style={{fontSize:11,color:T.textMed}}>{fmtDate(d.date_offre)}</div>
-          {d.date_validite&&<div style={{fontSize:10,color:expColor,fontWeight:exp!==null&&exp<=7?700:400}}>{exp<=0?"ExpirÃ©":`J-${exp}`}</div>}
+          {d.date_validite&&<div style={{fontSize:10,color:expColor,fontWeight:exp!==null&&exp<=7?700:400}}>{exp<=0?"Expiré":`J-${exp}`}</div>}
         </div>
         <div style={{display:"flex",justifyContent:"center"}}>
           <div style={{width:10,height:10,borderRadius:"50%",background:d.is_active?T.sage:T.border,border:`2px solid ${d.is_active?T.sage:T.borderMd}`}}/>
         </div>
       </div>
-      {/* Items accordÃ©on */}
+      {/* Items accordéon */}
       {open&&(d.items||[]).length>0&&(
         <div style={{background:T.indigoL,borderBottom:`1px solid ${T.border}`,padding:"0 16px 10px 46px"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"6px 0",marginBottom:4,borderBottom:`1px solid ${T.border}`}}>
-            {["DÃ©signation","QtÃ©","UnitÃ©","P.U. HT","Total HT"].map(h=>
+            {["Désignation","Qté","Unité","P.U. HT","Total HT"].map(h=>
               <span key={h} style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{h}</span>
             )}
           </div>
@@ -501,7 +501,7 @@ function TabDevisClient({devis}){
   return (
     <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
       <div style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"10px 16px",background:T.cardAlt,borderBottom:`2px solid ${T.border}`}}>
-        {["","RÃ©fÃ©rence","Projet","Statut","Montant HT","Date","Actif"].map(h=>(
+        {["","Référence","Projet","Statut","Montant HT","Date","Actif"].map(h=>(
           <span key={h} style={{fontSize:11,color:T.textSoft,fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase"}}>{h}</span>
         ))}
       </div>
@@ -520,7 +520,7 @@ function TabDevisClient({devis}){
   );
 }
 
-// â”€â”€â”€ MODAL HISTORIQUE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── MODAL HISTORIQUE ─────────────────────────────────────────────────────────
 function ModalContact({onClose,onSave}){
   const [form,setForm]=useState({date:new Date().toISOString().slice(0,10),type:"Appel",auteur:"",note:""});
   const set=(k,v)=>setForm(f=>({...f,[k]:v}));
@@ -534,12 +534,12 @@ function ModalContact({onClose,onSave}){
           <div><label style={lbl}>Date</label><input type="date" value={form.date} onChange={e=>set("date",e.target.value)} style={inp}/></div>
           <div><label style={lbl}>Type</label>
             <select value={form.type} onChange={e=>set("type",e.target.value)} style={inp}>
-              {["Appel","Email","RÃ©union","Note"].map(t=><option key={t}>{t}</option>)}
+              {["Appel","Email","Réunion","Note"].map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
         </div>
-        <div style={{marginBottom:14}}><label style={lbl}>Auteur</label><input value={form.auteur} onChange={e=>set("auteur",e.target.value)} placeholder="Initiales ou nomâ€¦" style={inp}/></div>
-        <div style={{marginBottom:20}}><label style={lbl}>Note</label><textarea value={form.note} onChange={e=>set("note",e.target.value)} placeholder="RÃ©sumÃ© de l'Ã©changeâ€¦" rows={4} style={{...inp,resize:"vertical",lineHeight:1.5}}/></div>
+        <div style={{marginBottom:14}}><label style={lbl}>Auteur</label><input value={form.auteur} onChange={e=>set("auteur",e.target.value)} placeholder="Initiales ou nom…" style={inp}/></div>
+        <div style={{marginBottom:20}}><label style={lbl}>Note</label><textarea value={form.note} onChange={e=>set("note",e.target.value)} placeholder="Résumé de l'échange…" rows={4} style={{...inp,resize:"vertical",lineHeight:1.5}}/></div>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
           <button onClick={onClose} style={{padding:"8px 18px",borderRadius:8,border:`1px solid ${T.border}`,background:T.card,color:T.textMed,fontSize:13,fontWeight:600,cursor:"pointer"}}>Annuler</button>
           <button onClick={()=>{onSave(form);onClose();}} style={{padding:"8px 18px",borderRadius:8,border:"none",background:`linear-gradient(135deg,${T.indigo},${T.teal})`,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>Enregistrer</button>
@@ -549,10 +549,10 @@ function ModalContact({onClose,onSave}){
   );
 }
 
-// â”€â”€â”€ PAGE FICHE CLIENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── PAGE FICHE CLIENT ────────────────────────────────────────────────────────
 export default function FicheClient({clientId, clientName}){
 
-  // â”€â”€ State donnÃ©es â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── State données ──────────────────────────────────────────────────────────
   const [client,   setClient]   = useState(clientId ? {...MOCK_CLIENT, name: clientName||""} : MOCK_CLIENT);
   const [contacts, setContacts] = useState(USE_MOCK ? MOCK_CONTACTS : []);
   const [projets,  setProjets]  = useState(USE_MOCK ? MOCK_PROJECTS : []);
@@ -564,9 +564,9 @@ export default function FicheClient({clientId, clientName}){
   const [showModal,setShowModal]   = useState(false);
   const [activeTab,setActiveTab]   = useState("projets");
 
-  // â”€â”€ Fetch Bubble quand clientId change â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  // USE_MOCK=false + clientId fourni â†’ on charge depuis Bubble
-  // USE_MOCK=true                   â†’ on garde les mocks (dÃ©veloppement)
+  // ── Fetch Bubble quand clientId change ────────────────────────────────────
+  // USE_MOCK=false + clientId fourni → on charge depuis Bubble
+  // USE_MOCK=true                   → on garde les mocks (développement)
   useEffect(()=>{
     if(USE_MOCK || !clientId) return;
     setFetchLoading(true);
@@ -583,16 +583,16 @@ export default function FicheClient({clientId, clientName}){
       .finally(()=>setFetchLoading(false));
   },[clientId]);
 
-  // â”€â”€ KPIs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── KPIs ──────────────────────────────────────────────────────────────────
   const caTotal   = devis.filter(d=>d.is_active).reduce((s,d)=>s+(d.montant_ht||0),0);
   const nbProjets = projets.length;
   const nbInterv  = projets.flatMap(p=>p.interventions).length;
-  const nbPlanif  = projets.flatMap(p=>p.interventions).filter(i=>i.status==="PlanifiÃ©").length;
+  const nbPlanif  = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifié").length;
   const nbDevis   = devis.length;
-  const caByProjet= projets.map(p=>({name:(p.name||'').split(' ')[0]||'â€”',ca:p.ca_total}));
+  const caByProjet= projets.map(p=>({name:(p.name||'').split(' ')[0]||'—',ca:p.ca_total}));
 
   const contactsRapides = contacts.filter(c=>["Principal","Secondaire","Contact sur site"].includes(c.type));
-  // Prochaines = date dans le futur (ou aujourd'hui), triÃ©es par date
+  // Prochaines = date dans le futur (ou aujourd'hui), triées par date
   const today = new Date(); today.setHours(0,0,0,0);
   const prochaines = projets
     .flatMap(p=>p.interventions
@@ -604,35 +604,35 @@ export default function FicheClient({clientId, clientName}){
   const addHistorique = entry => setHistorique(h=>[{id:`h${Date.now()}`,...entry},...h]);
 
   const TABS = [
-    ["projets",   "ðŸ“ Projets & Interventions"],
-    ["devis",     "ðŸ“„ Devis"],
+    ["projets",   "📁 Projets & Interventions"],
+    ["devis",     "📄 Devis"],
     ["contacts",  "ðŸ‘¥ Contacts"],
-    ["historique","ðŸ“‹ Historique"],
+    ["historique","📋 Historique"],
   ];
 
-  // â”€â”€ Ã‰cran chargement â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Écran chargement ──────────────────────────────────────────────────────
   if(fetchLoading) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center"}}>
         <div style={{width:40,height:40,border:`3px solid ${T.border}`,borderTopColor:T.indigo,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 14px"}}/>
-        <div style={{fontSize:13,color:T.textSoft}}>Chargement de la fiche <strong>{clientName}</strong>â€¦</div>
+        <div style={{fontSize:13,color:T.textSoft}}>Chargement de la fiche <strong>{clientName}</strong>…</div>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
   );
 
-  // â”€â”€ Ã‰cran erreur â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Écran erreur ──────────────────────────────────────────────────────────
   if(fetchError) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.rose}33`}}>
-        <div style={{fontSize:32,marginBottom:12}}>âš ï¸</div>
+        <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
         <div style={{fontSize:14,color:T.rose,fontWeight:700,marginBottom:8}}>{fetchError}</div>
-        <div style={{fontSize:12,color:T.textSoft}}>VÃ©rifie que USE_MOCK=false et que le clientId est correct</div>
+        <div style={{fontSize:12,color:T.textSoft}}>Vérifie que USE_MOCK=false et que le clientId est correct</div>
       </div>
     </div>
   );
 
-  // â”€â”€ Ã‰cran "aucun client sÃ©lectionnÃ©" â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Écran "aucun client sélectionné" ──────────────────────────────────────
   if(!clientId && !USE_MOCK) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.border}`}}>
@@ -653,7 +653,7 @@ export default function FicheClient({clientId, clientName}){
 
       <div style={{padding:"24px 28px",maxWidth:1400,margin:"0 auto"}}>
 
-        {/* â”€â”€ HERO CLIENT â”€â”€ [1] source: Companies */}
+        {/* ── HERO CLIENT ── [1] source: Companies */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:"24px 28px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",borderLeft:`5px solid ${T.indigo}`}}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
             <div>
@@ -665,14 +665,14 @@ export default function FicheClient({clientId, clientName}){
                   {/* [1] company.name */}
                   <div style={{fontSize:22,fontWeight:800,color:T.text}}>{client.name}</div>
                   <div style={{fontSize:12,color:T.textSoft,marginTop:2}}>
-                    Client depuis {fmtDate(client.created)} Â· SIRET {client.siret}
+                    Client depuis {fmtDate(client.created)} · SIRET {client.siret}
                   </div>
                 </div>
               </div>
               <div style={{display:"flex",gap:16,flexWrap:"wrap",marginTop:6}}>
-                <span style={{fontSize:12,color:T.textMed}}>ðŸ“ {client.address}</span>
-                <span style={{fontSize:12,color:T.textMed}}>ðŸ“ž {client.phone}</span>
-                <span style={{fontSize:12,color:T.textMed}}>âœ‰ï¸ {client.email}</span>
+                <span style={{fontSize:12,color:T.textMed}}>📍 {client.address}</span>
+                <span style={{fontSize:12,color:T.textMed}}>📞 {client.phone}</span>
+                <span style={{fontSize:12,color:T.textMed}}>✉️ {client.email}</span>
               </div>
             </div>
             {/* KPIs */}
@@ -680,13 +680,13 @@ export default function FicheClient({clientId, clientName}){
               <StatPill label="CA Actif"      value={fmt(caTotal)}  color={T.indigo}/>
               <StatPill label="Projets"        value={nbProjets}     color={T.teal}/>
               <StatPill label="Interventions"  value={nbInterv}      color={T.sage}/>
-              <StatPill label="PlanifiÃ©es"     value={nbPlanif}      color={T.violet}/>
+              <StatPill label="Planifiées"     value={nbPlanif}      color={T.violet}/>
               <StatPill label="Devis"          value={nbDevis}       color={T.amber}/>
             </div>
           </div>
         </div>
 
-        {/* â”€â”€ GRILLE PRINCIPALE â”€â”€ */}
+        {/* ── GRILLE PRINCIPALE ── */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:20}}>
 
           {/* COLONNE GAUCHE */}
@@ -706,8 +706,8 @@ export default function FicheClient({clientId, clientName}){
               ))}
             </div>
 
-            {/* â”€â”€ ONGLET PROJETS â”€â”€ */}
-            {/* [2] Projects filtrÃ©s par _company_attached + [4] interventions imbriquÃ©es */}
+            {/* ── ONGLET PROJETS ── */}
+            {/* [2] Projects filtrés par _company_attached + [4] interventions imbriquées */}
             {activeTab==="projets"&&(
               <div>
                 {projets.length===0
@@ -717,12 +717,12 @@ export default function FicheClient({clientId, clientName}){
               </div>
             )}
 
-            {/* â”€â”€ ONGLET DEVIS â”€â”€ */}
+            {/* ── ONGLET DEVIS ── */}
             {/* [3] Offers_history_documents via projets du client */}
             {activeTab==="devis"&&<TabDevisClient devis={devis}/>}
 
-            {/* â”€â”€ ONGLET CONTACTS â”€â”€ */}
-            {/* [5] Contact_projet liÃ©s aux projets du client */}
+            {/* ── ONGLET CONTACTS ── */}
+            {/* [5] Contact_projet liés aux projets du client */}
             {activeTab==="contacts"&&(
               <Card title="Contacts de l'entreprise" accent={T.teal}>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
@@ -737,8 +737,8 @@ export default function FicheClient({clientId, clientName}){
                           <Badge label={ct.type} color={c}/>
                         </div>
                         <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:4}}>{ct.name}</div>
-                        <div style={{fontSize:11,color:T.textSoft,marginBottom:2}}>âœ‰ï¸ {ct.email}</div>
-                        <div style={{fontSize:11,color:T.textSoft}}>ðŸ“ž {ct.phone}</div>
+                        <div style={{fontSize:11,color:T.textSoft,marginBottom:2}}>✉️ {ct.email}</div>
+                        <div style={{fontSize:11,color:T.textSoft}}>📞 {ct.phone}</div>
                       </div>
                     );
                   })}
@@ -746,7 +746,7 @@ export default function FicheClient({clientId, clientName}){
               </Card>
             )}
 
-            {/* â”€â”€ ONGLET HISTORIQUE â”€â”€ */}
+            {/* ── ONGLET HISTORIQUE ── */}
             {activeTab==="historique"&&(
               <Card title="Historique des contacts" accent={T.violet}
                 action={<button onClick={()=>setShowModal(true)} style={{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:`linear-gradient(135deg,${T.indigo},${T.teal})`,color:"#fff",fontSize:12,fontWeight:700}}>+ Ajouter</button>}>
@@ -757,7 +757,7 @@ export default function FicheClient({clientId, clientName}){
                     return (
                       <div key={h.id} style={{display:"flex",gap:16,marginBottom:idx<historique.length-1?20:0,position:"relative"}}>
                         <div style={{width:32,height:32,borderRadius:"50%",background:`${c}15`,border:`2px solid ${c}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,zIndex:1}}>
-                          <span style={{fontSize:12}}>{h.type==="Appel"?"ðŸ“ž":h.type==="Email"?"âœ‰ï¸":h.type==="RÃ©union"?"ðŸ¤":"ðŸ“"}</span>
+                          <span style={{fontSize:12}}>{h.type==="Appel"?"📞":h.type==="Email"?"✉️":h.type==="Réunion"?"🤝":"ðŸ“"}</span>
                         </div>
                         <div style={{flex:1,paddingTop:4}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
@@ -781,7 +781,7 @@ export default function FicheClient({clientId, clientName}){
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
 
             {/* CA PAR PROJET */}
-            {/* [2] Projects â€” ca_total calculÃ© depuis Items_devis */}
+            {/* [2] Projects — ca_total calculé depuis Items_devis */}
             <Card title="CA par projet" accent={T.sage}>
               <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={caByProjet} margin={{top:4,right:4,left:0,bottom:4}}>
@@ -800,10 +800,10 @@ export default function FicheClient({clientId, clientName}){
             </Card>
 
             {/* PROCHAINES INTERVENTIONS */}
-            {/* [4] interventions.status === "PlanifiÃ©" triÃ©es par date */}
+            {/* [4] interventions.status === "Planifié" triées par date */}
             <Card title="Prochaines interventions" accent={T.violet}>
               {prochaines.length===0
-                ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifiÃ©e</div>
+                ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifiée</div>
                 :(prochaines||[]).map((i,idx)=>{
                   const d=diffDays(i.date);
                   const dc=d<=3?T.rose:d<=7?T.amber:T.violet;
@@ -824,7 +824,7 @@ export default function FicheClient({clientId, clientName}){
             </Card>
 
             {/* CONTACTS RAPIDES */}
-            {/* [5] Contact_projet filtrÃ©s role IN ["Principal","Secondaire"] */}
+            {/* [5] Contact_projet filtrés role IN ["Principal","Secondaire"] */}
             <Card title="Contacts principaux" accent={T.teal}>
               {contactsRapides.length===0
                 ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucun contact principal</div>
