@@ -30,11 +30,11 @@ const S_COLOR = {
 };
 
 const TYPE_CONTACT_COLOR = {
-  "Principal":          T.indigo,
-  "\u00c0 mettre en copie":  T.amber,
-  "Contact sur site":   T.teal,
-  "Facturation":        T.violet,
-  "Autre - \u00c0 pr\u00e9ciser": T.textSoft,
+  "Principal":T.indigo,
+  "\u00c0 mettre en copie":T.amber,
+  "Contact sur site":T.teal,
+  "Facturation":T.violet,
+  "Autre - \u00c0 pr\u00e9ciser":T.textSoft,
   "Secondaire":T.teal, "Mise en copie":T.amber, "Compta":T.violet,
 };
 
@@ -49,10 +49,10 @@ const MOCK_CLIENT = {
 };
 
 const MOCK_CONTACTS = [
-  { id:"ct1", name:"Jean-Eudes Gohard", type:"Principal",      email:"je.gohard@idec.fr",  phone:"+33 6 12 34 56 78" },
-  { id:"ct2", name:"Marie Fontaine",    type:"Mise en copie",  email:"m.fontaine@idec.fr", phone:"+33 6 98 76 54 32" },
-  { id:"ct3", name:"Thomas Beaumont",   type:"Compta",         email:"compta@idec.fr",     phone:"+33 1 42 86 54 01" },
-  { id:"ct4", name:"Sophie Leroux",     type:"Secondaire",     email:"s.leroux@idec.fr",   phone:"+33 6 55 44 33 22" },
+  { id:"ct1", name:"Jean-Eudes Gohard", type:"Principal",     email:"je.gohard@idec.fr",  phone:"+33 6 12 34 56 78" },
+  { id:"ct2", name:"Marie Fontaine",    type:"Mise en copie", email:"m.fontaine@idec.fr", phone:"+33 6 98 76 54 32" },
+  { id:"ct3", name:"Thomas Beaumont",   type:"Compta",        email:"compta@idec.fr",     phone:"+33 1 42 86 54 01" },
+  { id:"ct4", name:"Sophie Leroux",     type:"Secondaire",    email:"s.leroux@idec.fr",   phone:"+33 6 55 44 33 22" },
 ];
 
 const MOCK_PROJECTS = [
@@ -61,9 +61,9 @@ const MOCK_PROJECTS = [
     type:"Dallage", address:"Zone Industrielle Nord, 51100 Reims",
     ca_total:185400, avancement:0.67,
     interventions:[
-      { id:"i1", name:"Reprise fissures dalle",  status:"Termin\u00e9",  date:"2025-01-15", agents:["pierre@qualidal.fr","lucas@qualidal.fr"], rapport:"sophie@qualidal.fr" },
-      { id:"i2", name:"Traitement surface",       status:"En cours",     date:"2025-03-10", agents:["lucas@qualidal.fr"],                     rapport:"sophie@qualidal.fr" },
-      { id:"i3", name:"Reprise joint dilatation", status:"Planifi\u00e9",date:"2025-04-22", agents:["pierre@qualidal.fr","ali@qualidal.fr"],   rapport:"marc@qualidal.fr"   },
+      { id:"i1", name:"Reprise fissures dalle",  status:"Termin\u00e9",   date:"2025-01-15", agents:["pierre.martin@qualidal.fr","lucas.bernard@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
+      { id:"i2", name:"Traitement surface",       status:"En cours",      date:"2025-03-10", agents:["lucas.bernard@qualidal.fr"],                            rapport:"sophie.durand@qualidal.fr" },
+      { id:"i3", name:"Reprise joint dilatation", status:"Planifi\u00e9", date:"2025-04-22", agents:["pierre.martin@qualidal.fr","ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
     ],
   },
   {
@@ -71,8 +71,8 @@ const MOCK_PROJECTS = [
     type:"R\u00e9paration b\u00e9ton", address:"Parc Logistique, 60300 Senlis",
     ca_total:67200, avancement:0.15,
     interventions:[
-      { id:"i4", name:"Diagnostic structure", status:"Termin\u00e9",  date:"2025-02-01", agents:["ali@qualidal.fr"],    rapport:"marc@qualidal.fr"   },
-      { id:"i5", name:"Injection r\u00e9sine", status:"Planifi\u00e9",date:"2025-05-10", agents:["pierre@qualidal.fr"], rapport:"sophie@qualidal.fr" },
+      { id:"i4", name:"Diagnostic structure",  status:"Termin\u00e9",   date:"2025-02-01", agents:["ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
+      { id:"i5", name:"Injection r\u00e9sine", status:"Planifi\u00e9",  date:"2025-05-10", agents:["pierre.martin@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
     ],
   },
   {
@@ -83,30 +83,38 @@ const MOCK_PROJECTS = [
 ];
 
 const MOCK_DEVIS = [
-  { id:"d1", offer_number:"devis_de00001898", project_id:"p1", project_name:"AREFIM - REIMS (51)",       os_devis_statut:"Devis sign\u00e9",       date_offre:"2025-01-10", date_validite:"2025-06-20", montant_ht:48200,  is_active:true  },
-  { id:"d2", offer_number:"devis_de00001901", project_id:"p1", project_name:"AREFIM - REIMS (51)",       os_devis_statut:"Devis envoy\u00e9",      date_offre:"2024-12-01", date_validite:"2025-03-01", montant_ht:22000,  is_active:false },
-  { id:"d3", offer_number:"devis_de00001910", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)",    os_devis_statut:"Chiffrage en cours",      date_offre:"2025-02-15", date_validite:"2025-07-15", montant_ht:67200,  is_active:true  },
-  { id:"d4", offer_number:"devis_de00001918", project_id:"p3", project_name:"ENTREP\u00d4T ROISSY (95)", os_devis_statut:"Devis envoy\u00e9",      date_offre:"2025-03-01", date_validite:"2025-06-25", montant_ht:42800,  is_active:true  },
-  { id:"d5", offer_number:"devis_de00001925", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)",    os_devis_statut:"Class\u00e9 sans suite", date_offre:"2024-11-10", date_validite:"2025-01-10", montant_ht:31000,  is_active:false },
+  { id:"d1", offer_number:"devis_de00001898", project_id:"p1", project_name:"AREFIM - REIMS (51)",        os_devis_statut:"Devis sign\u00e9",       date_offre:"2025-01-10", date_validite:"2025-06-20", montant_ht:48200, is_active:true  },
+  { id:"d2", offer_number:"devis_de00001901", project_id:"p1", project_name:"AREFIM - REIMS (51)",        os_devis_statut:"Devis envoy\u00e9",      date_offre:"2024-12-01", date_validite:"2025-03-01", montant_ht:22000, is_active:false },
+  { id:"d3", offer_number:"devis_de00001910", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)",     os_devis_statut:"Chiffrage en cours",      date_offre:"2025-02-15", date_validite:"2025-07-15", montant_ht:67200, is_active:true  },
+  { id:"d4", offer_number:"devis_de00001918", project_id:"p3", project_name:"ENTREP\u00d4T ROISSY (95)", os_devis_statut:"Devis envoy\u00e9",      date_offre:"2025-03-01", date_validite:"2025-06-25", montant_ht:42800, is_active:true  },
+  { id:"d5", offer_number:"devis_de00001925", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)",     os_devis_statut:"Class\u00e9 sans suite", date_offre:"2024-11-10", date_validite:"2025-01-10", montant_ht:31000, is_active:false },
 ];
 
 const MOCK_HISTORIQUE_INIT = [
-  { id:"h1", date:"2025-02-14", type:"Appel",   auteur:"ST",  note:"Relance devis AREFIM \u2014 client confirme signature prochaine semaine." },
-  { id:"h2", date:"2025-01-28", type:"Email",   auteur:"AM",  note:"Envoi devis actualis\u00e9 suite demande modification quantit\u00e9s." },
+  { id:"h1", date:"2025-02-14", type:"Appel",        auteur:"ST",  note:"Relance devis AREFIM \u2014 client confirme signature prochaine semaine." },
+  { id:"h2", date:"2025-01-28", type:"Email",        auteur:"AM",  note:"Envoi devis actualis\u00e9 suite demande modification quantit\u00e9s." },
   { id:"h3", date:"2025-01-10", type:"R\u00e9union", auteur:"ST",  note:"R\u00e9union de chantier sur site Reims. Points : planning T1, acc\u00e8s zone sud." },
-  { id:"h4", date:"2024-12-05", type:"Appel",   auteur:"MEM", note:"Premier contact pour le projet Senlis. RDV pris pour le 15/01." },
+  { id:"h4", date:"2024-12-05", type:"Appel",        auteur:"MEM", note:"Premier contact pour le projet Senlis. RDV pris pour le 15/01." },
 ];
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
-const fmt     = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
-const fmtDate = d => d ? new Date(d).toLocaleDateString("fr-FR") : "\u2014";
-const diffDays= d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
+const fmt      = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
+const fmtDate  = d => d ? new Date(d).toLocaleDateString("fr-FR") : "\u2014";
+const diffDays = d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
 
-// Extrait juste le nom d'utilisateur d'une adresse email (avant le @)
+// email → Prenom Nom lisible (pierre.martin@x.fr → Pierre Martin)
 const emailToName = email => {
   if (!email) return "";
   const local = email.split("@")[0];
   return local.split(/[._-]/).map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
+};
+
+// Normalise un champ Bubble qui peut etre string ou tableau
+const toArray = v => {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.filter(Boolean);
+  if (typeof v === "string" && v.trim()) return [v];
+  return [];
 };
 
 // ─── FETCH BUBBLE ─────────────────────────────────────────────────────────────
@@ -139,17 +147,10 @@ const normalizeType = v => {
   return String(v);
 };
 
-// Normalise un champ qui peut etre string ou tableau (Bubble list)
-const toArray = v => {
-  if(!v) return [];
-  if(Array.isArray(v)) return v.filter(Boolean);
-  if(typeof v==="string" && v.trim()) return [v];
-  return [];
-};
-
 async function fetchClientData(clientName){
   console.log("[FC] fetch:", clientName);
 
+  // Phase 1 : tables legeres
   const [rawCompanies, rawProjects] = await Promise.all([
     _cache.companies || fetchAllPages("companies").then(r=>{ _cache.companies=r; return r; }),
     _cache.projects  || fetchAllPages("projects").then(r=>{ _cache.projects=r; return r; }),
@@ -174,18 +175,28 @@ async function fetchClientData(clientName){
     };
   }
 
-  const [rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all([
+  // Phase 2 : tables volumineuses + users
+  const [rawInterventions, rawOffers, rawItems, rawContacts, rawUsers] = await Promise.all([
     _cache.interventions || fetchAllPages("interventions").then(r=>{ _cache.interventions=r; return r; }),
     _cache.offers        || fetchAllPages("offers_history_documents").then(r=>{ _cache.offers=r; return r; }),
     _cache.items         || fetchAllPages("items_devis").then(r=>{ _cache.items=r; return r; }),
     _cache.contacts      || fetchAllPages("contacts").then(r=>{ _cache.contacts=r; return r; }),
+    _cache.users         || fetchAllPages("user").then(r=>{ _cache.users=r; return r; }),
   ]);
 
+  // Index User : _id → email
+  const userById = {};
+  rawUsers.forEach(u => { userById[u._id] = u.email || ""; });
+  console.log("[FC] users:", rawUsers.length);
+
+  // Filtres JS
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
   const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
   const rawContactsF = rawContacts.filter(c=>c._company_attached===companyId);
+  console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts:", rawContactsF.length);
 
+  // Items groupes par devis
   const itemsByOffer = {};
   rawItemsF.forEach(item=>{
     const oid = item.offer_document_item;
@@ -216,6 +227,7 @@ async function fetchClientData(clientName){
     if(pid){ denomByProj[pid]=(denomByProj[pid]||0)+ht; if(isI) numByProj[pid]=(numByProj[pid]||0)+ht; }
   });
 
+  // Interventions groupees — resolution IDs User → emails
   const intervByProj={};
   rawIntervF.forEach(i=>{
     const pid=i._project_attached;
@@ -225,10 +237,10 @@ async function fetchClientData(clientName){
       name:i.name||"Sans nom",
       status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"\u2014",
       date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
-      // [INTERVENANTS] champ Bubble : _list_user_concerned (liste d'emails)
-      agents: toArray(i._list_user_concerned),
-      // [RAPPORT] champ Bubble : _user_report_assigned (email)
-      rapport: i._user_report_assigned || "",
+      // _list_user_concerned : liste d'IDs Bubble User → emails
+      agents: toArray(i._list_user_concerned).map(id => userById[id] || id),
+      // _user_report_assigned : ID Bubble User → email
+      rapport: userById[i._user_report_assigned] || i._user_report_assigned || "",
     });
   });
 
@@ -345,36 +357,50 @@ function ProjetAccordeon({projet}){
               const dateColor=interv.status==="Planifi\u00e9"?(jours<=7?T.rose:T.violet):T.textSoft;
               return (
                 <div key={interv.id}
-                  style={{display:"grid",gridTemplateColumns:"26px 1fr 110px 140px 1fr 1fr",gap:10,padding:"11px 16px",alignItems:"center",borderBottom:idx<projet.interventions.length-1?`1px solid ${T.border}`:"none",background:idx%2===0?T.card:T.cardAlt}}>
+                  style={{display:"grid",gridTemplateColumns:"26px 1fr 110px 140px 1fr 1fr",gap:10,padding:"11px 16px",alignItems:"center",
+                    borderBottom:idx<projet.interventions.length-1?`1px solid ${T.border}`:"none",
+                    background:idx%2===0?T.card:T.cardAlt}}>
+
+                  {/* Point statut */}
                   <div style={{width:8,height:8,borderRadius:"50%",background:S_COLOR[interv.status]||T.textSoft,margin:"0 auto",flexShrink:0}}/>
+
+                  {/* Nom */}
                   <span style={{fontSize:12,color:T.text,fontWeight:600}}>{interv.name}</span>
+
+                  {/* Badge statut */}
                   <Badge label={interv.status}/>
 
-                  {/* DATE */}
+                  {/* Date */}
                   <span style={{fontSize:11,color:dateColor,fontWeight:interv.status==="Planifi\u00e9"?700:400}}>
                     {fmtDate(interv.date)}
-                    {interv.status==="Planifi\u00e9"&&jours!==null&&<span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>}
+                    {interv.status==="Planifi\u00e9"&&jours!==null&&
+                      <span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>
+                    }
                   </span>
 
-                  {/* INTERVENANTS — _list_user_concerned */}
+                  {/* Intervenants — _list_user_concerned IDs resolus en emails */}
                   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
                     {(interv.agents||[]).length===0
-                      ? <span style={{fontSize:10,color:T.border}}>\u2014</span>
+                      ? <span style={{fontSize:10,color:T.textSoft}}>\u2014</span>
                       : (interv.agents||[]).map((email,i)=>(
                           <span key={i} title={email}
-                            style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600,maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            style={{fontSize:10,padding:"2px 7px",borderRadius:20,
+                              background:T.tealL,color:T.teal,fontWeight:600,
+                              maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {emailToName(email)}
                           </span>
                         ))
                     }
                   </div>
 
-                  {/* RAPPORT — _user_report_assigned */}
+                  {/* Rapport — _user_report_assigned ID resolu en email */}
                   <span style={{fontSize:11,color:T.textSoft}}>
-                    <span style={{fontSize:10,color:T.textSoft,marginRight:4}}>Rapport :</span>
+                    <span style={{fontSize:10,marginRight:4}}>Rapport :</span>
                     {interv.rapport
-                      ? <span title={interv.rapport} style={{color:T.textMed,fontWeight:600}}>{emailToName(interv.rapport)}</span>
-                      : <span style={{color:T.border}}>\u2014</span>
+                      ? <span title={interv.rapport} style={{color:T.textMed,fontWeight:600}}>
+                          {emailToName(interv.rapport)}
+                        </span>
+                      : <span style={{color:T.textSoft}}>\u2014</span>
                     }
                   </span>
                 </div>
@@ -505,9 +531,9 @@ export default function FicheClient({clientId, clientName}){
   const [devis,    setDevis]    = useState(USE_MOCK ? MOCK_DEVIS    : []);
   const [fetchLoading, setFetchLoading] = useState(!USE_MOCK && !!clientId);
   const [fetchError,   setFetchError]   = useState(null);
-  const [historique,setHistorique] = useState(MOCK_HISTORIQUE_INIT);
-  const [showModal,setShowModal]   = useState(false);
-  const [activeTab,setActiveTab]   = useState("projets");
+  const [historique, setHistorique] = useState(MOCK_HISTORIQUE_INIT);
+  const [showModal,  setShowModal]  = useState(false);
+  const [activeTab,  setActiveTab]  = useState("projets");
 
   useEffect(()=>{
     if(USE_MOCK || !clientId) return;
@@ -525,12 +551,12 @@ export default function FicheClient({clientId, clientName}){
       .finally(()=>setFetchLoading(false));
   },[clientId]);
 
-  const caTotal   = devis.filter(d=>d.is_active).reduce((s,d)=>s+(d.montant_ht||0),0);
-  const nbProjets = projets.length;
-  const nbInterv  = projets.flatMap(p=>p.interventions).length;
-  const nbPlanif  = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifi\u00e9").length;
-  const nbDevis   = devis.length;
-  const caByProjet= projets.map(p=>({name:(p.name||'').split(' ')[0]||'\u2014',ca:p.ca_total}));
+  const caTotal    = devis.filter(d=>d.is_active).reduce((s,d)=>s+(d.montant_ht||0),0);
+  const nbProjets  = projets.length;
+  const nbInterv   = projets.flatMap(p=>p.interventions).length;
+  const nbPlanif   = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifi\u00e9").length;
+  const nbDevis    = devis.length;
+  const caByProjet = projets.map(p=>({name:(p.name||'').split(' ')[0]||'\u2014',ca:p.ca_total}));
 
   const contactsRapides = contacts.filter(c=>["Principal","Secondaire","Contact sur site"].includes(c.type));
   const today = new Date(); today.setHours(0,0,0,0);
@@ -544,10 +570,10 @@ export default function FicheClient({clientId, clientName}){
   const addHistorique = entry => setHistorique(h=>[{id:`h${Date.now()}`,...entry},...h]);
 
   const TABS = [
-    ["projets",   "\ud83d\udcc1 Projets & Interventions"],
-    ["devis",     "\ud83d\udcc4 Devis"],
-    ["contacts",  "\ud83d\udc65 Contacts"],
-    ["historique","\ud83d\udccb Historique"],
+    ["projets",    "\ud83d\udcc1 Projets & Interventions"],
+    ["devis",      "\ud83d\udcc4 Devis"],
+    ["contacts",   "\ud83d\udc65 Contacts"],
+    ["historique", "\ud83d\udccb Historique"],
   ];
 
   if(fetchLoading) return (
@@ -612,11 +638,11 @@ export default function FicheClient({clientId, clientName}){
               </div>
             </div>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              <StatPill label="CA Actif"     value={fmt(caTotal)}  color={T.indigo}/>
-              <StatPill label="Projets"       value={nbProjets}     color={T.teal}/>
-              <StatPill label="Interventions" value={nbInterv}      color={T.sage}/>
-              <StatPill label="Planifi\u00e9es" value={nbPlanif}    color={T.violet}/>
-              <StatPill label="Devis"         value={nbDevis}       color={T.amber}/>
+              <StatPill label="CA Actif"       value={fmt(caTotal)} color={T.indigo}/>
+              <StatPill label="Projets"         value={nbProjets}    color={T.teal}/>
+              <StatPill label="Interventions"   value={nbInterv}     color={T.sage}/>
+              <StatPill label="Planifi\u00e9es" value={nbPlanif}     color={T.violet}/>
+              <StatPill label="Devis"           value={nbDevis}      color={T.amber}/>
             </div>
           </div>
         </div>
@@ -775,6 +801,7 @@ export default function FicheClient({clientId, clientName}){
                 })
               }
             </Card>
+
           </div>
         </div>
       </div>
