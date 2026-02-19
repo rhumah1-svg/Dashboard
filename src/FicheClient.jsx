@@ -241,28 +241,15 @@ async function fetchClientData(clientName){
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
   const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
-  // ── DEBUG CONTACTS ── log la structure complète du 1er contact pour trouver le bon champ
-  if(rawContacts.length>0){
-    const sample = rawContacts[0];
-    console.log("[FC] CONTACT KEYS:", Object.keys(sample));
-    console.log("[FC] CONTACT FULL:", JSON.stringify(sample));
-    // Chercher quel champ contient l'id de la company
-    Object.entries(sample).forEach(([k,v])=>{
-      if(v && (String(v).includes(companyId) || (typeof v==="object" && JSON.stringify(v).includes(companyId))))
-        console.log("[FC] MATCH company dans champ:", k, "=", JSON.stringify(v));
-    });
-  }
-
-  // Filtre ultra-permissif : teste TOUS les champs qui pourraient contenir companyId
+  // Champ Bubble : "_company-attached" (tiret, pas underscore → accès avec bracket notation)
   const rawContactsF = rawContacts.filter(c=>{
-    return Object.values(c).some(v=>{
-      if(!v) return false;
-      if(typeof v==="string") return v===companyId;
-      if(typeof v==="object") return JSON.stringify(v).includes(companyId);
-      return false;
-    });
+    const ca = c["_company-attached"];
+    if(!ca) return false;
+    if(typeof ca==="string") return ca===companyId;
+    if(typeof ca==="object") return ca._id===companyId||ca.id===companyId;
+    return false;
   });
-  console.log("[FC] contacts raw:", rawContacts.length, "| filtrés:", rawContactsF.length, "| companyId:", companyId);
+  console.log("[FC] contacts:", rawContactsF.length, "/", rawContacts.length);
 
   // Items groupés par devis (pour affichage accordéon dans onglet Devis)
   const itemsByOffer = {};
