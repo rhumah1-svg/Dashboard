@@ -1,11 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { fetchAllPages } from "./api";
 
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
-const USE_MOCK    = false;
-const DASH_SECRET = "qd_x9k2m7p4nz3";
-
-// ─── THEME ────────────────────────────────────────────────────────────────────
+// ─── THÈME ────────────────────────────────────────────────────────────────────
 const T = {
   bg:"#F2F5F9", card:"#FFFFFF", cardAlt:"#F8FAFC",
   border:"#E3E9F2", borderMd:"#C8D4E3",
@@ -30,110 +27,31 @@ const S_COLOR = {
 };
 
 const TYPE_CONTACT_COLOR = {
-  "Principal":T.indigo,
-  "À mettre en copie":T.amber,
-  "Contact sur site":T.teal,
-  "Facturation":T.violet,
-  "Autre - À préciser":T.textSoft,
+  "Principal":T.indigo, "À mettre en copie":T.amber, "Contact sur site":T.teal,
+  "Facturation":T.violet, "Autre - À préciser":T.textSoft,
   "Secondaire":T.teal, "Mise en copie":T.amber, "Compta":T.violet,
 };
 
 const HISTORIQUE_COLOR = { Appel:T.sage, Email:T.indigo, "Réunion":T.violet, Note:T.amber };
-
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const MOCK_CLIENT = {
-  id:"c1", name:"IDEC Construction",
-  address:"14 rue de la République, 75001 Paris",
-  phone:"+33 1 42 86 54 00", email:"contact@idec-construction.fr",
-  siret:"412 345 678 00021", created:"2021-03-15",
-};
-
-const MOCK_CONTACTS = [
-  { id:"ct1", name:"Jean-Eudes Gohard", type:"Principal",     email:"je.gohard@idec.fr",  phone:"+33 6 12 34 56 78" },
-  { id:"ct2", name:"Marie Fontaine",    type:"Mise en copie", email:"m.fontaine@idec.fr", phone:"+33 6 98 76 54 32" },
-  { id:"ct3", name:"Thomas Beaumont",   type:"Compta",        email:"compta@idec.fr",     phone:"+33 1 42 86 54 01" },
-  { id:"ct4", name:"Sophie Leroux",     type:"Secondaire",    email:"s.leroux@idec.fr",   phone:"+33 6 55 44 33 22" },
-];
-
-const MOCK_PROJECTS = [
-  {
-    id:"p1", name:"AREFIM - REIMS (51)", status:"Devis signé",
-    type:"Dallage", address:"Zone Industrielle Nord, 51100 Reims",
-    ca_total:185400, avancement:0.67,
-    interventions:[
-      { id:"i1", name:"Reprise fissures dalle",  status:"Terminé",  date:"2025-01-15", agents:["pierre.martin@qualidal.fr","lucas.bernard@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
-      { id:"i2", name:"Traitement surface",       status:"En cours", date:"2025-03-10", agents:["lucas.bernard@qualidal.fr"],                            rapport:"sophie.durand@qualidal.fr" },
-      { id:"i3", name:"Reprise joint dilatation", status:"Planifié", date:"2025-04-22", agents:["pierre.martin@qualidal.fr","ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
-    ],
-  },
-  {
-    id:"p2", name:"LOGISTIQUE SENLIS (60)", status:"Chiffrage en cours",
-    type:"Réparation béton", address:"Parc Logistique, 60300 Senlis",
-    ca_total:67200, avancement:0.15,
-    interventions:[
-      { id:"i4", name:"Diagnostic structure",  status:"Terminé",  date:"2025-02-01", agents:["ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
-      { id:"i5", name:"Injection résine",      status:"Planifié", date:"2025-05-10", agents:["pierre.martin@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
-    ],
-  },
-  {
-    id:"p3", name:"ENTREPÔT ROISSY (95)", status:"Devis envoyé",
-    type:"Marquage sol", address:"Aéroport CDG, Zone Fret, 95700 Roissy",
-    ca_total:42800, avancement:0, interventions:[],
-  },
-];
-
-const MOCK_DEVIS = [
-  { id:"d1", offer_number:"devis_de00001898", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis signé",       date_offre:"2025-01-10", date_validite:"2025-06-20", montant_ht:48200, is_active:true  },
-  { id:"d2", offer_number:"devis_de00001901", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis envoyé",      date_offre:"2024-12-01", date_validite:"2025-03-01", montant_ht:22000, is_active:false },
-  { id:"d3", offer_number:"devis_de00001910", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)", os_devis_statut:"Chiffrage en cours", date_offre:"2025-02-15", date_validite:"2025-07-15", montant_ht:67200, is_active:true  },
-  { id:"d4", offer_number:"devis_de00001918", project_id:"p3", project_name:"ENTREPÔT ROISSY (95)",   os_devis_statut:"Devis envoyé",      date_offre:"2025-03-01", date_validite:"2025-06-25", montant_ht:42800, is_active:true  },
-  { id:"d5", offer_number:"devis_de00001925", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)", os_devis_statut:"Classé sans suite",  date_offre:"2024-11-10", date_validite:"2025-01-10", montant_ht:31000, is_active:false },
-];
-
-const MOCK_HISTORIQUE_INIT = [
-  { id:"h1", date:"2025-02-14", type:"Appel",   auteur:"ST",  note:"Relance devis AREFIM — client confirme signature prochaine semaine." },
-  { id:"h2", date:"2025-01-28", type:"Email",   auteur:"AM",  note:"Envoi devis actualisé suite demande modification quantités." },
-  { id:"h3", date:"2025-01-10", type:"Réunion", auteur:"ST",  note:"Réunion de chantier sur site Reims. Points : planning T1, accès zone sud." },
-  { id:"h4", date:"2024-12-05", type:"Appel",   auteur:"MEM", note:"Premier contact pour le projet Senlis. RDV pris pour le 15/01." },
-];
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
 const fmt      = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
 const fmtDate  = d => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 const diffDays = d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
 
-// email → Prenom Nom lisible (pierre.martin@x.fr → Pierre Martin)
 const emailToName = email => {
   if (!email) return "";
-  // Si ce n'est pas un email (pas de @), retourner tel quel
   if (!email.includes("@")) return email;
   const local = email.split("@")[0];
   return local.split(/[._-]/).map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
 };
 
-// Normalise un champ Bubble qui peut etre string ou tableau
 const toArray = v => {
   if (!v) return [];
   if (Array.isArray(v)) return v.filter(Boolean);
   if (typeof v === "string" && v.trim()) return [v];
   return [];
 };
-
-// ─── FETCH BUBBLE ─────────────────────────────────────────────────────────────
-let _cache = {};
-
-async function fetchAllPages(table){
-  let results=[], cursor=0;
-  while(true){
-    const res  = await fetch(`/api/bubble?table=${table}&cursor=${cursor}&secret=${DASH_SECRET}`);
-    const data = await res.json();
-    const page = data.response?.results||[];
-    results    = results.concat(page);
-    if((data.response?.remaining??0)===0) break;
-    cursor += page.length;
-  }
-  return results;
-}
 
 const extractAddr = v => {
   if(!v) return "";
@@ -149,66 +67,40 @@ const normalizeType = v => {
   return String(v);
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// RÉSOLUTION USER ID → EMAIL
-// Bubble stocke l'email dans différents champs selon la config :
-//   - u.authentication.email.email  (le plus courant)
-//   - u.authentication.email        (parfois string directe)
-//   - u.email                       (champ custom ajouté manuellement)
-//   - u.Email                       (variante majuscule)
-// On essaie tous les chemins possibles.
-// ═══════════════════════════════════════════════════════════════════════════════
 function extractUserEmail(u) {
-  // Chemin 1 : authentication.email.email (structure Bubble standard)
   if (u.authentication?.email?.email) return u.authentication.email.email;
-  // Chemin 2 : authentication.email (string directe)
   if (u.authentication?.email && typeof u.authentication.email === "string") return u.authentication.email;
-  // Chemin 3 : champ custom "email" (minuscule)
   if (u.email && typeof u.email === "string" && u.email.includes("@")) return u.email;
-  // Chemin 4 : champ custom "Email" (majuscule)
   if (u.Email && typeof u.Email === "string" && u.Email.includes("@")) return u.Email;
-  // Chemin 5 : champ custom "user_email"
   if (u.user_email && typeof u.user_email === "string") return u.user_email;
-  // Fallback : vide
   return "";
 }
 
-async function fetchClientData(clientName){
-  console.log("[FC] fetch:", clientName);
+// ─── FETCH CLIENT DATA (via API sécurisée) ────────────────────────────────────
+let _cache = {};
 
-  // Phase 1 : tables legeres
+async function fetchClientData(clientName) {
   const [rawCompanies, rawProjects] = await Promise.all([
     _cache.companies || fetchAllPages("companies").then(r=>{ _cache.companies=r; return r; }),
     _cache.projects  || fetchAllPages("projects").then(r=>{ _cache.projects=r; return r; }),
   ]);
 
   const company = rawCompanies.find(c=>(c.name||"").toLowerCase()===clientName.toLowerCase());
-  if(!company){ console.warn("[FC] company introuvable:", clientName); return null; }
+  if(!company) return null;
   const companyId = company._id;
-
   const rawProjectsF = rawProjects.filter(p=>p._company_attached===companyId);
-  const projectIds   = new Set(rawProjectsF.map(p=>p._id));
-  console.log("[FC] company:", companyId, "| projets:", rawProjectsF.length);
+  const projectIds = new Set(rawProjectsF.map(p=>p._id));
 
   if(rawProjectsF.length===0){
     return {
-      client:{
-        id:company._id, name:company.name||clientName,
-        address:company.adresse_texte||"", phone:company.phone||"", email:company.email||"",
-        siret:company.siret||"", created:company["Created Date"]?.slice(0,10)||"",
-      },
+      client:{ id:company._id, name:company.name||clientName, address:company.adresse_texte||"", phone:company.phone||"", email:company.email||"", siret:company.siret||"", created:company["Created Date"]?.slice(0,10)||"" },
       projets:[], devis:[], contacts:[],
     };
   }
 
-  // Phase 2 : tables volumineuses + users
   let rawUsers = [];
-  try {
-    rawUsers = _cache.users || await fetchAllPages("user").then(r=>{ _cache.users=r; return r; });
-  } catch(e) {
-    console.warn("[FC] ⚠ Impossible de charger la table User :", e.message);
-    console.warn("[FC] Les noms d'intervenants ne pourront pas être résolus.");
-  }
+  try { rawUsers = _cache.users || await fetchAllPages("user").then(r=>{ _cache.users=r; return r; }); }
+  catch(e) { console.warn("[FC] Users inaccessibles:", e.message); }
 
   const [rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all([
     _cache.interventions || fetchAllPages("interventions").then(r=>{ _cache.interventions=r; return r; }),
@@ -217,108 +109,48 @@ async function fetchClientData(clientName){
     _cache.contacts      || fetchAllPages("contacts").then(r=>{ _cache.contacts=r; return r; }),
   ]);
 
-  // ── Index User : _id → email ──────────────────────────────────────────────
   const userById = {};
-  rawUsers.forEach(u => {
-    const email = extractUserEmail(u);
-    userById[u._id] = email;
-  });
+  rawUsers.forEach(u => { userById[u._id] = extractUserEmail(u); });
 
-  // DEBUG : afficher le premier user pour comprendre la structure
-  if (rawUsers.length > 0) {
-    console.log("[FC] ✓ Users chargés:", rawUsers.length);
-    console.log("[FC] Premier user (structure):", JSON.stringify(rawUsers[0], null, 2));
-    console.log("[FC] Mapping userById (5 premiers):", Object.fromEntries(Object.entries(userById).slice(0,5)));
-  } else {
-    console.warn("[FC] ⚠ Table user vide ou inaccessible — les noms ne seront pas résolus");
-  }
-
-  // Filtres JS
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
   const rawOffersF   = rawOffers.filter(o=>projectIds.has(o._project_attached));
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
   const rawContactsF = rawContacts.filter(c=>c._company_attached===companyId);
-  console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts:", rawContactsF.length);
 
-  // DEBUG : afficher la première intervention pour voir les champs user
-  if (rawIntervF.length > 0) {
-    const sample = rawIntervF[0];
-    console.log("[FC] Première intervention (champs user) :", {
-      _list_user_concerned: sample._list_user_concerned,
-      _user_report_assigned: sample._user_report_assigned,
-      // Autres champs potentiels
-      agent_name: sample.agent_name,
-      rapport_name: sample.rapport_name,
-      user_concerned: sample.user_concerned,
-      intervenant: sample.intervenant,
-    });
-  }
-
-  // Items groupes par devis
-  const itemsByOffer = {};
+  const itemsByOffer={}, montantByOffer={}, numByProj={}, denomByProj={};
   rawItemsF.forEach(item=>{
-    const oid = item.offer_document_item;
-    if(!oid) return;
-    if(!itemsByOffer[oid]) itemsByOffer[oid]=[];
-    itemsByOffer[oid].push({
-      id:item._id,
-      designation:item.designation||"",
-      quantity:item.quantity||item.quantite||0,
-      unit:item.unit||item.OS_product_unit||"",
-      price_ht:item.price_HT||item.prix_unitaire||0,
-      total_ht:item["Total HT"]||item.Total_HT||0,
-    });
-  });
-
-  const montantByOffer={};
-  rawItemsF.forEach(item=>{
-    const oid=item.offer_document_item;
+    const oid=item.offer_document_item, pid=item._project_attached;
     const ht=item["Total HT"]||item.Total_HT||0;
-    if(oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
-  });
-
-  const numByProj={}, denomByProj={};
-  rawItemsF.forEach(item=>{
-    const pid=item._project_attached;
-    const ht=item["Total HT"]||item.Total_HT||0;
-    const isI=item.is_intervention===true||item["intervention?"]=== true;
+    const isI=item.is_intervention===true||item["intervention?"]===true;
+    if(oid){
+      montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
+      if(!itemsByOffer[oid]) itemsByOffer[oid]=[];
+      itemsByOffer[oid].push({ id:item._id, designation:item.designation||"", quantity:item.quantity||item.quantite||0, unit:item.unit||item.OS_product_unit||"", price_ht:item.price_HT||item.prix_unitaire||0, total_ht:ht });
+    }
     if(pid){ denomByProj[pid]=(denomByProj[pid]||0)+ht; if(isI) numByProj[pid]=(numByProj[pid]||0)+ht; }
   });
 
-  // ── Résolution User ID → email ────────────────────────────────────────────
-  // Si userById est vide, le fallback affichera "Inconnu" au lieu de l'ID brut
-  const resolveUser = (id) => {
+  const resolveUser = id => {
     if (!id) return "";
-    // Si c'est déjà un email, le retourner directement
     if (typeof id === "string" && id.includes("@")) return id;
-    // Chercher dans le mapping
-    const email = userById[id];
-    if (email) return email;
-    // Fallback : retourner vide (sera affiché comme "Inconnu" dans l'UI)
-    console.warn("[FC] User ID non résolu:", id);
-    return "";
+    return userById[id] || "";
   };
 
-  // Interventions groupees — resolution IDs User → emails
   const intervByProj={};
   rawIntervF.forEach(i=>{
     const pid=i._project_attached;
     if(!intervByProj[pid]) intervByProj[pid]=[];
     intervByProj[pid].push({
-      id:i._id,
-      name:i.name||"Sans nom",
+      id:i._id, name:i.name||"Sans nom",
       status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"—",
       date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
-      // _list_user_concerned : liste d'IDs Bubble User → emails
       agents: toArray(i._list_user_concerned).map(id => resolveUser(id)),
-      // _user_report_assigned : ID Bubble User → email
       rapport: resolveUser(i._user_report_assigned),
     });
   });
 
   const projets = rawProjectsF.map(p=>({
-    id:p._id, name:p.name||"",
-    status:p.OS_devis_status||"",
+    id:p._id, name:p.name||"", status:p.OS_devis_status||"",
     type:normalizeType(p.OS_prestations_type)||"",
     address:extractAddr(p.chantier_address||p.address),
     ca_total:denomByProj[p._id]||0,
@@ -328,37 +160,25 @@ async function fetchClientData(clientName){
 
   const projectMap=Object.fromEntries(rawProjectsF.map(p=>[p._id,p]));
   const devis = rawOffersF.map(o=>({
-    id:o._id,
-    offer_number:o.offer_number||o.devis_number||o._id,
-    project_id:o._project_attached,
-    project_name:projectMap[o._project_attached]?.name||"",
+    id:o._id, offer_number:o.offer_number||o.devis_number||o._id,
+    project_id:o._project_attached, project_name:projectMap[o._project_attached]?.name||"",
     os_devis_statut:o.os_devis_statut||projectMap[o._project_attached]?.OS_devis_status||"",
     date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10),
     date_validite:o.date_validite?o.date_validite.slice(0,10):null,
-    montant_ht:montantByOffer[o._id]||0,
-    is_active:o.is_active!==false,
+    montant_ht:montantByOffer[o._id]||0, is_active:o.is_active!==false,
     items:(itemsByOffer[o._id]||[]).filter(Boolean),
   }));
 
   const contacts = rawContactsF.map(c=>({
-    id:c._id,
-    name:c.first_last_name||c.Nom||c.nom||c.name||"Sans nom",
+    id:c._id, name:c.first_last_name||c.Nom||c.nom||c.name||"Sans nom",
     type:normalizeType(c.type_contact||c.role_contact_projet),
-    email:c.email||"",
-    phone:c.phone||c.telephone||"",
+    email:c.email||"", phone:c.phone||c.telephone||"",
   }));
 
-  const client = {
-    id:company._id, name:company.name||clientName,
-    address:company.adresse_texte||extractAddr(company.address)||"",
-    phone:company.phone||"",
-    email:company.email||"",
-    siret:company.siret||"",
-    created:company["Created Date"]?.slice(0,10)||"",
+  return {
+    client:{ id:company._id, name:company.name||clientName, address:company.adresse_texte||extractAddr(company.address)||"", phone:company.phone||"", email:company.email||"", siret:company.siret||"", created:company["Created Date"]?.slice(0,10)||"" },
+    projets, devis, contacts,
   };
-
-  console.log("[FC] OK ✓");
-  return { client, projets, devis, contacts };
 }
 
 // ─── COMPOSANTS UI ────────────────────────────────────────────────────────────
@@ -401,7 +221,7 @@ function StatPill({label,value,color}){
   );
 }
 
-// ─── ACCORDEON PROJET ─────────────────────────────────────────────────────────
+// ─── ACCORDÉON PROJET ─────────────────────────────────────────────────────────
 function ProjetAccordeon({projet}){
   const [open,setOpen]=useState(false);
   return (
@@ -432,47 +252,28 @@ function ProjetAccordeon({projet}){
                   style={{display:"grid",gridTemplateColumns:"26px 1fr 110px 140px 1fr 1fr",gap:10,padding:"11px 16px",alignItems:"center",
                     borderBottom:idx<projet.interventions.length-1?`1px solid ${T.border}`:"none",
                     background:idx%2===0?T.card:T.cardAlt}}>
-
-                  {/* Point statut */}
                   <div style={{width:8,height:8,borderRadius:"50%",background:S_COLOR[interv.status]||T.textSoft,margin:"0 auto",flexShrink:0}}/>
-
-                  {/* Nom */}
                   <span style={{fontSize:12,color:T.text,fontWeight:600}}>{interv.name}</span>
-
-                  {/* Badge statut */}
                   <Badge label={interv.status}/>
-
-                  {/* Date */}
                   <span style={{fontSize:11,color:dateColor,fontWeight:interv.status==="Planifié"?700:400}}>
                     {fmtDate(interv.date)}
-                    {interv.status==="Planifié"&&jours!==null&&
-                      <span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>
-                    }
+                    {interv.status==="Planifié"&&jours!==null&&<span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>}
                   </span>
-
-                  {/* Intervenants — emails résolus depuis User IDs */}
                   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
-                    {(interv.agents||[]).length===0 || (interv.agents.length===1 && !interv.agents[0])
+                    {(interv.agents||[]).length===0||(interv.agents.length===1&&!interv.agents[0])
                       ? <span style={{fontSize:10,color:T.textSoft,fontStyle:"italic"}}>Non assigné</span>
                       : (interv.agents||[]).filter(Boolean).map((email,i)=>(
-                          <span key={i} title={email}
-                            style={{fontSize:10,padding:"2px 7px",borderRadius:20,
-                              background:T.tealL,color:T.teal,fontWeight:600,
-                              maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                            {email.includes("@") ? emailToName(email) : (email || "Inconnu")}
+                          <span key={i} title={email} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600,maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            {email.includes("@") ? emailToName(email) : (email||"Inconnu")}
                           </span>
                         ))
                     }
                   </div>
-
-                  {/* Rapport — email résolu depuis User ID */}
                   <span style={{fontSize:11,color:T.textSoft}}>
                     <span style={{fontSize:10,marginRight:4}}>Rapport :</span>
-                    {interv.rapport && interv.rapport.includes("@")
-                      ? <span title={interv.rapport} style={{color:T.textMed,fontWeight:600}}>
-                          {emailToName(interv.rapport)}
-                        </span>
-                      : <span style={{color:T.textSoft,fontStyle:"italic"}}>{interv.rapport || "Non assigné"}</span>
+                    {interv.rapport&&interv.rapport.includes("@")
+                      ? <span title={interv.rapport} style={{color:T.textMed,fontWeight:600}}>{emailToName(interv.rapport)}</span>
+                      : <span style={{color:T.textSoft,fontStyle:"italic"}}>{interv.rapport||"Non assigné"}</span>
                     }
                   </span>
                 </div>
@@ -489,7 +290,7 @@ function ProjetAccordeon({projet}){
   );
 }
 
-// ─── ONGLET DEVIS ─────────────────────────────────────────────────────────────
+// ─── TAB DEVIS CLIENT ─────────────────────────────────────────────────────────
 function DevisRow({d, idx}){
   const [open,setOpen] = useState(false);
   const exp=diffDays(d.date_validite);
@@ -553,7 +354,7 @@ function TabDevisClient({devis}){
       <div style={{maxHeight:560,overflowY:"auto"}}>
         {devis.length===0
           ?<div style={{padding:"32px",textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun devis pour ce client</div>
-          :(devis||[]).map((d,idx)=><DevisRow key={d.id} d={d} idx={idx}/>)
+          :devis.map((d,idx)=><DevisRow key={d.id} d={d} idx={idx}/>)
         }
       </div>
       <div style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"12px 16px",borderTop:`2px solid ${T.border}`,background:T.cardAlt}}>
@@ -596,19 +397,18 @@ function ModalContact({onClose,onSave}){
 
 // ─── PAGE FICHE CLIENT ────────────────────────────────────────────────────────
 export default function FicheClient({clientId, clientName}){
-
-  const [client,   setClient]   = useState(clientId ? {...MOCK_CLIENT, name: clientName||""} : MOCK_CLIENT);
-  const [contacts, setContacts] = useState(USE_MOCK ? MOCK_CONTACTS : []);
-  const [projets,  setProjets]  = useState(USE_MOCK ? MOCK_PROJECTS : []);
-  const [devis,    setDevis]    = useState(USE_MOCK ? MOCK_DEVIS    : []);
-  const [fetchLoading, setFetchLoading] = useState(!USE_MOCK && !!clientId);
+  const [client,   setClient]   = useState({ name: clientName||"" });
+  const [contacts, setContacts] = useState([]);
+  const [projets,  setProjets]  = useState([]);
+  const [devis,    setDevis]    = useState([]);
+  const [fetchLoading, setFetchLoading] = useState(!!clientId);
   const [fetchError,   setFetchError]   = useState(null);
-  const [historique, setHistorique] = useState(MOCK_HISTORIQUE_INIT);
+  const [historique, setHistorique] = useState([]);
   const [showModal,  setShowModal]  = useState(false);
   const [activeTab,  setActiveTab]  = useState("projets");
 
   useEffect(()=>{
-    if(USE_MOCK || !clientId) return;
+    if(!clientId) return;
     setFetchLoading(true);
     setFetchError(null);
     fetchClientData(clientId)
@@ -633,19 +433,16 @@ export default function FicheClient({clientId, clientName}){
   const contactsRapides = contacts.filter(c=>["Principal","Secondaire","Contact sur site"].includes(c.type));
   const today = new Date(); today.setHours(0,0,0,0);
   const prochaines = projets
-    .flatMap(p=>p.interventions
-      .filter(i=> i.date && new Date(i.date) >= today)
-      .map(i=>({...i, projet:p.name}))
-    )
+    .flatMap(p=>p.interventions.filter(i=> i.date && new Date(i.date) >= today).map(i=>({...i, projet:p.name})))
     .sort((a,b)=>new Date(a.date)-new Date(b.date));
 
   const addHistorique = entry => setHistorique(h=>[{id:`h${Date.now()}`,...entry},...h]);
 
   const TABS = [
-    ["projets",    "📁 Projets & Interventions"],
-    ["devis",      "📄 Devis"],
-    ["contacts",   "👥 Contacts"],
-    ["historique", "📋 Historique"],
+    ["projets","📁 Projets & Interventions"],
+    ["devis","📄 Devis"],
+    ["contacts","👥 Contacts"],
+    ["historique","📋 Historique"],
   ];
 
   if(fetchLoading) return (
@@ -663,12 +460,11 @@ export default function FicheClient({clientId, clientName}){
       <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.rose}33`}}>
         <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
         <div style={{fontSize:14,color:T.rose,fontWeight:700,marginBottom:8}}>{fetchError}</div>
-        <div style={{fontSize:12,color:T.textSoft}}>Vérifie que USE_MOCK=false et que le clientId est correct</div>
       </div>
     </div>
   );
 
-  if(!clientId && !USE_MOCK) return (
+  if(!clientId) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.border}`}}>
         <div style={{fontSize:32,marginBottom:12}}>🔍</div>
@@ -687,7 +483,6 @@ export default function FicheClient({clientId, clientName}){
       `}</style>
 
       <div style={{padding:"24px 28px",maxWidth:1400,margin:"0 auto"}}>
-
         {/* HERO CLIENT */}
         <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:14,padding:"24px 28px",marginBottom:20,boxShadow:"0 2px 8px rgba(0,0,0,0.05)",borderLeft:`5px solid ${T.indigo}`}}>
           <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",flexWrap:"wrap",gap:16}}>
@@ -698,42 +493,34 @@ export default function FicheClient({clientId, clientName}){
                 </div>
                 <div>
                   <div style={{fontSize:22,fontWeight:800,color:T.text}}>{client.name}</div>
-                  <div style={{fontSize:12,color:T.textSoft,marginTop:2}}>
-                    Client depuis {fmtDate(client.created)} · SIRET {client.siret}
-                  </div>
+                  <div style={{fontSize:12,color:T.textSoft,marginTop:2}}>Client depuis {fmtDate(client.created)} · SIRET {client.siret}</div>
                 </div>
               </div>
               <div style={{display:"flex",gap:16,flexWrap:"wrap",marginTop:6}}>
-                <span style={{fontSize:12,color:T.textMed}}>📍 {client.address}</span>
-                <span style={{fontSize:12,color:T.textMed}}>📞 {client.phone}</span>
-                <span style={{fontSize:12,color:T.textMed}}>✉️ {client.email}</span>
+                {client.address && <span style={{fontSize:12,color:T.textMed}}>📍 {client.address}</span>}
+                {client.phone && <span style={{fontSize:12,color:T.textMed}}>📞 {client.phone}</span>}
+                {client.email && <span style={{fontSize:12,color:T.textMed}}>✉️ {client.email}</span>}
               </div>
             </div>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-              <StatPill label="CA Actif"       value={fmt(caTotal)} color={T.indigo}/>
-              <StatPill label="Projets"         value={nbProjets}    color={T.teal}/>
-              <StatPill label="Interventions"   value={nbInterv}     color={T.sage}/>
-              <StatPill label="Planifiées"      value={nbPlanif}     color={T.violet}/>
-              <StatPill label="Devis"           value={nbDevis}      color={T.amber}/>
+              <StatPill label="CA Actif" value={fmt(caTotal)} color={T.indigo}/>
+              <StatPill label="Projets" value={nbProjets} color={T.teal}/>
+              <StatPill label="Interventions" value={nbInterv} color={T.sage}/>
+              <StatPill label="Planifiées" value={nbPlanif} color={T.violet}/>
+              <StatPill label="Devis" value={nbDevis} color={T.amber}/>
             </div>
           </div>
         </div>
 
         {/* GRILLE PRINCIPALE */}
         <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:20}}>
-
-          {/* COLONNE GAUCHE */}
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
-            {/* ONGLETS */}
             <div style={{display:"flex",gap:3,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:4,width:"fit-content",boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
               {TABS.map(([key,label])=>(
                 <button key={key} onClick={()=>setActiveTab(key)}
                   style={{cursor:"pointer",padding:"7px 18px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",
-                    background:activeTab===key?T.card:"transparent",
-                    color:activeTab===key?T.indigo:T.textMed,
-                    boxShadow:activeTab===key?"0 1px 4px rgba(0,0,0,0.08)":"none",
-                    transition:"all 0.15s"}}>
+                    background:activeTab===key?T.card:"transparent",color:activeTab===key?T.indigo:T.textMed,
+                    boxShadow:activeTab===key?"0 1px 4px rgba(0,0,0,0.08)":"none",transition:"all 0.15s"}}>
                   {label}
                 </button>
               ))}
@@ -743,7 +530,7 @@ export default function FicheClient({clientId, clientName}){
               <div>
                 {projets.length===0
                   ?<div style={{padding:32,textAlign:"center",color:T.textSoft,fontSize:13,background:T.card,borderRadius:12,border:`1px solid ${T.border}`}}>Aucun projet pour ce client</div>
-                  :(projets||[]).map(p=><ProjetAccordeon key={p.id} projet={p}/>)
+                  :projets.map(p=><ProjetAccordeon key={p.id} projet={p}/>)
                 }
               </div>
             )}
@@ -752,10 +539,10 @@ export default function FicheClient({clientId, clientName}){
 
             {activeTab==="contacts"&&(
               <Card title="Contacts de l'entreprise" accent={T.teal}>
-                {(contacts||[]).length===0
+                {contacts.length===0
                   ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucun contact pour ce client</div>
                   :<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-                    {(contacts||[]).map(ct=>{
+                    {contacts.map(ct=>{
                       const c=TYPE_CONTACT_COLOR[ct.type]||T.textSoft;
                       return (
                         <div key={ct.id} style={{padding:"14px 16px",borderRadius:10,border:`1px solid ${c}25`,background:`${c}08`}}>
@@ -779,37 +566,39 @@ export default function FicheClient({clientId, clientName}){
             {activeTab==="historique"&&(
               <Card title="Historique des contacts" accent={T.violet}
                 action={<button onClick={()=>setShowModal(true)} style={{cursor:"pointer",padding:"6px 14px",borderRadius:8,border:"none",background:`linear-gradient(135deg,${T.indigo},${T.teal})`,color:"#fff",fontSize:12,fontWeight:700}}>+ Ajouter</button>}>
-                <div style={{position:"relative"}}>
-                  <div style={{position:"absolute",left:16,top:0,bottom:0,width:2,background:T.border,borderRadius:1}}/>
-                  {historique.map((h,idx)=>{
-                    const c=HISTORIQUE_COLOR[h.type]||T.textSoft;
-                    const icon=h.type==="Appel"?"📞":h.type==="Email"?"✉️":h.type==="Réunion"?"🤝":"📝";
-                    return (
-                      <div key={h.id} style={{display:"flex",gap:16,marginBottom:idx<historique.length-1?20:0,position:"relative"}}>
-                        <div style={{width:32,height:32,borderRadius:"50%",background:`${c}15`,border:`2px solid ${c}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,zIndex:1}}>
-                          <span style={{fontSize:12}}>{icon}</span>
-                        </div>
-                        <div style={{flex:1,paddingTop:4}}>
-                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                              <Badge label={h.type} color={c}/>
-                              <span style={{fontSize:11,color:T.textSoft,fontWeight:600}}>{h.auteur}</span>
-                            </div>
-                            <span style={{fontSize:11,color:T.textSoft}}>{fmtDate(h.date)}</span>
+                {historique.length===0
+                  ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucun historique — ajoutez votre premier contact</div>
+                  :<div style={{position:"relative"}}>
+                    <div style={{position:"absolute",left:16,top:0,bottom:0,width:2,background:T.border,borderRadius:1}}/>
+                    {historique.map((h,idx)=>{
+                      const c=HISTORIQUE_COLOR[h.type]||T.textSoft;
+                      const icon=h.type==="Appel"?"📞":h.type==="Email"?"✉️":h.type==="Réunion"?"🤝":"📝";
+                      return (
+                        <div key={h.id} style={{display:"flex",gap:16,marginBottom:idx<historique.length-1?20:0,position:"relative"}}>
+                          <div style={{width:32,height:32,borderRadius:"50%",background:`${c}15`,border:`2px solid ${c}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,zIndex:1}}>
+                            <span style={{fontSize:12}}>{icon}</span>
                           </div>
-                          <div style={{fontSize:13,color:T.textMed,lineHeight:1.5,padding:"10px 14px",background:T.cardAlt,borderRadius:8,border:`1px solid ${T.border}`}}>{h.note}</div>
+                          <div style={{flex:1,paddingTop:4}}>
+                            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                                <Badge label={h.type} color={c}/>
+                                <span style={{fontSize:11,color:T.textSoft,fontWeight:600}}>{h.auteur}</span>
+                              </div>
+                              <span style={{fontSize:11,color:T.textSoft}}>{fmtDate(h.date)}</span>
+                            </div>
+                            <div style={{fontSize:13,color:T.textMed,lineHeight:1.5,padding:"10px 14px",background:T.cardAlt,borderRadius:8,border:`1px solid ${T.border}`}}>{h.note}</div>
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
+                }
               </Card>
             )}
           </div>
 
           {/* COLONNE DROITE */}
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
-
             <Card title="CA par projet" accent={T.sage}>
               <ResponsiveContainer width="100%" height={150}>
                 <BarChart data={caByProjet} margin={{top:4,right:4,left:0,bottom:4}}>
@@ -830,7 +619,7 @@ export default function FicheClient({clientId, clientName}){
             <Card title="Prochaines interventions" accent={T.violet}>
               {prochaines.length===0
                 ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifiée</div>
-                :(prochaines||[]).map((i,idx)=>{
+                :prochaines.map((i,idx)=>{
                   const d=diffDays(i.date);
                   const dc=d<=3?T.rose:d<=7?T.amber:T.violet;
                   return (
@@ -843,7 +632,7 @@ export default function FicheClient({clientId, clientName}){
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                         {(i.agents||[]).filter(Boolean).map((email,ei)=>(
                           <span key={ei} title={email} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>
-                            {email.includes("@") ? emailToName(email) : (email || "Inconnu")}
+                            {email.includes("@") ? emailToName(email) : (email||"Inconnu")}
                           </span>
                         ))}
                       </div>
@@ -856,7 +645,7 @@ export default function FicheClient({clientId, clientName}){
             <Card title="Contacts principaux" accent={T.teal}>
               {contactsRapides.length===0
                 ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucun contact principal</div>
-                :(contactsRapides||[]).map(ct=>{
+                :contactsRapides.map(ct=>{
                   const c=TYPE_CONTACT_COLOR[ct.type]||T.textSoft;
                   return (
                     <div key={ct.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:`1px solid ${T.border}`}}>
@@ -873,7 +662,6 @@ export default function FicheClient({clientId, clientName}){
                 })
               }
             </Card>
-
           </div>
         </div>
       </div>
