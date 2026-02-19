@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo, useRef, Component } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import FicheClient from './FicheClient';
-import TableContacts from "./TableContacts";
 import Login from './Login';
+import TableContacts from './TableContacts';
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
 // Capture les crashes React et affiche l'erreur exacte au lieu d'un écran blanc
@@ -170,7 +170,6 @@ const T = {
   bg:"#F2F5F9", card:"#FFFFFF", cardAlt:"#F8FAFC",
   border:"#E3E9F2", borderMd:"#C8D4E3",
   text:"#1A2640", textMed:"#475C78", textSoft:"#8BA0B8",
-  // Pastels colorés
   indigo:"#5B72D4", indigoL:"#EDF0FB",
   teal:"#3A9E9E",   tealL:"#E6F5F5",
   sage:"#4E9468",   sageL:"#E8F4EE",
@@ -373,14 +372,12 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
 
   return (
     <div>
-      {/* Barre période */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"10px 16px",background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
         <span style={{fontSize:12,color:T.textMed,fontWeight:700}}>📅 Période KPIs</span>
         <DateRange dateFrom={periodFrom} dateTo={periodTo} onChange={(f,t)=>{setPeriodFrom(f);setPeriodTo(t);}}/>
         <span style={{fontSize:12,color:hasPeriod?T.indigo:T.textSoft}}>{hasPeriod?`${offersInPeriod.length} devis dans la période`:"Toutes les périodes"}</span>
       </div>
 
-      {/* KPIs */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
         <KpiCard label="CA Signé"        value={fmt(caSigne)}    sub={`${signe.length} devis signés`}    color={T.sage}   pct={(caSigne/(caSigne+caPipeline+1))*100}/>
         <KpiCard label="CA Pipeline"     value={fmt(caPipeline)} sub={`${pipeline.length} en cours`}     color={T.indigo} pct={(caPipeline/(caSigne+caPipeline+1))*100}/>
@@ -388,7 +385,6 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
         <KpiCard label="Expirent ≤7j"    value={expirent.length} sub={expirent.length>0?"⚠ Action requise":"✓ Tout est ok"} color={expirent.length>0?T.rose:T.sage}/>
       </div>
 
-      {/* Charts */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:14,marginBottom:20}}>
         <Card title="Répartition CA par statut" badge={<PeriodTag on={hasPeriod}/>}>
           <ResponsiveContainer width="100%" height={200}>
@@ -430,7 +426,6 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
         </Card>
       </div>
 
-      {/* Table */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:T.cardAlt}}>
           <SearchInput value={search} onChange={setSearch} placeholder="Projet, entreprise, référence…"/>
@@ -663,8 +658,6 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
 }
 
 // ─── SEARCHBOX CLIENT (dans le header) ───────────────────────────────────────
-// Debounce 300ms + recherche locale sur les companies déjà chargées
-// → pas de requête réseau à chaque frappe, performant même avec 1000 clients
 function ClientSearchBox({companies, onSelect}){
   const [query, setQuery]     = useState("");
   const [results, setResults] = useState([]);
@@ -673,14 +666,12 @@ function ClientSearchBox({companies, onSelect}){
   const ref    = useRef();
   const timer  = useRef();
 
-  // Fermer si clic extérieur
   useEffect(()=>{
     const h = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   },[]);
 
-  // Debounce 300ms — recherche sur nom (insensible casse + accents)
   const handleChange = e => {
     const q = e.target.value;
     setQuery(q);
@@ -691,7 +682,7 @@ function ClientSearchBox({companies, onSelect}){
       const nq   = norm(q);
       const hits = companies
         .filter(c => norm(c.name||"").includes(nq))
-        .slice(0, 8); // max 8 résultats affichés
+        .slice(0, 8);
       setResults(hits);
       setOpen(hits.length > 0);
     }, 300);
@@ -707,7 +698,6 @@ function ClientSearchBox({companies, onSelect}){
 
   return (
     <div ref={ref} style={{position:"relative"}}>
-      {/* Champ de recherche discret */}
       <div style={{
         display:"flex", alignItems:"center", gap:6,
         padding:"6px 12px",
@@ -733,7 +723,6 @@ function ClientSearchBox({companies, onSelect}){
         )}
       </div>
 
-      {/* Dropdown résultats */}
       {open && (
         <div style={{
           position:"absolute", top:"calc(100% + 6px)", left:0, right:0,
@@ -766,15 +755,16 @@ function ClientSearchBox({companies, onSelect}){
 function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, companies, onSelectClient}){
   const navigate = useNavigate();
   const location = useLocation();
-  const isClients  = location.pathname === "/ficheclient";
-  const isDashboard = !isClients;
+  const isClients   = location.pathname === "/ficheclient";
+  const isContacts  = location.pathname === "/contacts";
+  const isDashboard = !isClients && !isContacts;
 
   const handleNavClick = key => {
-    if(key==="clients"){ navigate("/ficheclient"); }
-    else { if(isClients) navigate("/"); setTab(key); }
+    if(key==="clients")  { navigate("/ficheclient"); }
+    else if(key==="contacts") { navigate("/contacts"); }
+    else { if(isClients || isContacts) navigate("/"); setTab(key); }
   };
 
-  // Quand on sélectionne un client dans la searchbox → nav vers ficheclient avec l'id
   const handleSelectClient = company => {
     onSelectClient(company);
     navigate("/ficheclient");
@@ -796,8 +786,16 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
 
         {/* Nav tabs */}
         <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
-          {[["devis","📋 Devis"],["interventions","🔧 Interventions"],["clients","🏢 Clients"]],["contacts","📇 Contacts"]].map(([key,label])=>{
-            const active = key==="clients" ? isClients : (isDashboard && tab===key);
+          {[
+            ["devis",       "📋 Devis"],
+            ["interventions","🔧 Interventions"],
+            ["clients",     "🏢 Clients"],
+            ["contacts",    "📇 Contacts"],
+          ].map(([key,label])=>{
+            const active =
+              key==="clients"  ? isClients  :
+              key==="contacts" ? isContacts :
+              (isDashboard && tab===key);
             return (
               <button key={key} onClick={()=>handleNavClick(key)}
                 style={{cursor:"pointer",padding:"7px 20px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",
@@ -809,8 +807,7 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
           })}
         </div>
 
-        {/* ── SEARCHBOX CLIENT — visible sur toutes les pages ── */}
-        {/* companies vient de data.projects → _company_attached (dédupliqué dans App) */}
+        {/* Searchbox client */}
         {companies.length > 0 && (
           <ClientSearchBox companies={companies} onSelect={handleSelectClient}/>
         )}
@@ -842,7 +839,6 @@ export default function QualidaDashboard(){
   const [data, setData]               = useState(null);
   const [loading, setLoading]         = useState(true);
   const [selectedCompany, setSelectedCompany] = useState(null);
-  // Client actif dans FicheClient (objet {id, name})
   const [activeClient, setActiveClient] = useState(null);
 
   const handleLogout = () => { sessionStorage.removeItem("qd_auth"); setAuth(false); };
@@ -851,9 +847,6 @@ export default function QualidaDashboard(){
     if(auth) fetchAll().then(d=>{ setData(d); setLoading(false); });
   },[auth]);
 
-  // Liste dédupliquée de toutes les companies pour la searchbox
-  // ── SOURCE: data.projects → _company_attached ─────────────────────────────
-  // Pour Bubble : remplacer par fetchAllPages("companies") directement
   const allCompanies = useMemo(()=>{
     if(!data) return [];
     const seen = new Set();
@@ -916,13 +909,12 @@ export default function QualidaDashboard(){
             }
           </div>
         }/>
-        {/* FicheClient reçoit l'activeClient sélectionné via searchbox */}
-        {/* activeClient = { id, name } — utiliser activeClient.id pour fetch Bubble */}
         <Route path="/ficheclient" element={
           <ErrorBoundary>
             <FicheClient key={activeClient?.name||'no-client'} clientId={activeClient?.name} clientName={activeClient?.name}/>
           </ErrorBoundary>
         }/>
+        <Route path="/contacts" element={<TableContacts />}/>
       </Routes>
 
       <div style={{padding:"14px 28px",fontSize:11,color:T.textSoft,textAlign:"center",borderTop:`1px solid ${T.border}`,background:T.card,fontWeight:500}}>
