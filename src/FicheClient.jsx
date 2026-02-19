@@ -22,28 +22,28 @@ const T = {
 
 const S_COLOR = {
   "Saisie d'information":T.textSoft, "Chiffrage en cours":T.sky,
-  "Valid\u00e9 par l'administration":T.violet, "Devis envoy\u00e9":T.indigo,
-  "Devis sign\u00e9":T.sage, "Projet termin\u00e9":"#2E7A4E",
-  "A relancer":T.amber, "Relance envoy\u00e9e":T.coral,
-  "Class\u00e9 sans suite":T.rose, "Non formalis\u00e9":T.textSoft,
-  "Planifi\u00e9":T.violet, "En cours":T.amber, "Termin\u00e9":T.sage, "Annul\u00e9":T.rose,
+  "Validé par l'administration":T.violet, "Devis envoyé":T.indigo,
+  "Devis signé":T.sage, "Projet terminé":"#2E7A4E",
+  "A relancer":T.amber, "Relance envoyée":T.coral,
+  "Classé sans suite":T.rose, "Non formalisé":T.textSoft,
+  "Planifié":T.violet, "En cours":T.amber, "Terminé":T.sage, "Annulé":T.rose,
 };
 
 const TYPE_CONTACT_COLOR = {
   "Principal":T.indigo,
-  "\u00c0 mettre en copie":T.amber,
+  "À mettre en copie":T.amber,
   "Contact sur site":T.teal,
   "Facturation":T.violet,
-  "Autre - \u00c0 pr\u00e9ciser":T.textSoft,
+  "Autre - À préciser":T.textSoft,
   "Secondaire":T.teal, "Mise en copie":T.amber, "Compta":T.violet,
 };
 
-const HISTORIQUE_COLOR = { Appel:T.sage, Email:T.indigo, "R\u00e9union":T.violet, Note:T.amber };
+const HISTORIQUE_COLOR = { Appel:T.sage, Email:T.indigo, "Réunion":T.violet, Note:T.amber };
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
 const MOCK_CLIENT = {
   id:"c1", name:"IDEC Construction",
-  address:"14 rue de la R\u00e9publique, 75001 Paris",
+  address:"14 rue de la République, 75001 Paris",
   phone:"+33 1 42 86 54 00", email:"contact@idec-construction.fr",
   siret:"412 345 678 00021", created:"2021-03-15",
 };
@@ -57,54 +57,56 @@ const MOCK_CONTACTS = [
 
 const MOCK_PROJECTS = [
   {
-    id:"p1", name:"AREFIM - REIMS (51)", status:"Devis sign\u00e9",
+    id:"p1", name:"AREFIM - REIMS (51)", status:"Devis signé",
     type:"Dallage", address:"Zone Industrielle Nord, 51100 Reims",
     ca_total:185400, avancement:0.67,
     interventions:[
-      { id:"i1", name:"Reprise fissures dalle",  status:"Termin\u00e9",   date:"2025-01-15", agents:["pierre.martin@qualidal.fr","lucas.bernard@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
-      { id:"i2", name:"Traitement surface",       status:"En cours",      date:"2025-03-10", agents:["lucas.bernard@qualidal.fr"],                            rapport:"sophie.durand@qualidal.fr" },
-      { id:"i3", name:"Reprise joint dilatation", status:"Planifi\u00e9", date:"2025-04-22", agents:["pierre.martin@qualidal.fr","ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
+      { id:"i1", name:"Reprise fissures dalle",  status:"Terminé",  date:"2025-01-15", agents:["pierre.martin@qualidal.fr","lucas.bernard@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
+      { id:"i2", name:"Traitement surface",       status:"En cours", date:"2025-03-10", agents:["lucas.bernard@qualidal.fr"],                            rapport:"sophie.durand@qualidal.fr" },
+      { id:"i3", name:"Reprise joint dilatation", status:"Planifié", date:"2025-04-22", agents:["pierre.martin@qualidal.fr","ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
     ],
   },
   {
     id:"p2", name:"LOGISTIQUE SENLIS (60)", status:"Chiffrage en cours",
-    type:"R\u00e9paration b\u00e9ton", address:"Parc Logistique, 60300 Senlis",
+    type:"Réparation béton", address:"Parc Logistique, 60300 Senlis",
     ca_total:67200, avancement:0.15,
     interventions:[
-      { id:"i4", name:"Diagnostic structure",  status:"Termin\u00e9",   date:"2025-02-01", agents:["ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
-      { id:"i5", name:"Injection r\u00e9sine", status:"Planifi\u00e9",  date:"2025-05-10", agents:["pierre.martin@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
+      { id:"i4", name:"Diagnostic structure",  status:"Terminé",  date:"2025-02-01", agents:["ali.benali@qualidal.fr"],    rapport:"marc.dupont@qualidal.fr"   },
+      { id:"i5", name:"Injection résine",      status:"Planifié", date:"2025-05-10", agents:["pierre.martin@qualidal.fr"], rapport:"sophie.durand@qualidal.fr" },
     ],
   },
   {
-    id:"p3", name:"ENTREP\u00d4T ROISSY (95)", status:"Devis envoy\u00e9",
-    type:"Marquage sol", address:"A\u00e9roport CDG, Zone Fret, 95700 Roissy",
+    id:"p3", name:"ENTREPÔT ROISSY (95)", status:"Devis envoyé",
+    type:"Marquage sol", address:"Aéroport CDG, Zone Fret, 95700 Roissy",
     ca_total:42800, avancement:0, interventions:[],
   },
 ];
 
 const MOCK_DEVIS = [
-  { id:"d1", offer_number:"devis_de00001898", project_id:"p1", project_name:"AREFIM - REIMS (51)",        os_devis_statut:"Devis sign\u00e9",       date_offre:"2025-01-10", date_validite:"2025-06-20", montant_ht:48200, is_active:true  },
-  { id:"d2", offer_number:"devis_de00001901", project_id:"p1", project_name:"AREFIM - REIMS (51)",        os_devis_statut:"Devis envoy\u00e9",      date_offre:"2024-12-01", date_validite:"2025-03-01", montant_ht:22000, is_active:false },
-  { id:"d3", offer_number:"devis_de00001910", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)",     os_devis_statut:"Chiffrage en cours",      date_offre:"2025-02-15", date_validite:"2025-07-15", montant_ht:67200, is_active:true  },
-  { id:"d4", offer_number:"devis_de00001918", project_id:"p3", project_name:"ENTREP\u00d4T ROISSY (95)", os_devis_statut:"Devis envoy\u00e9",      date_offre:"2025-03-01", date_validite:"2025-06-25", montant_ht:42800, is_active:true  },
-  { id:"d5", offer_number:"devis_de00001925", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)",     os_devis_statut:"Class\u00e9 sans suite", date_offre:"2024-11-10", date_validite:"2025-01-10", montant_ht:31000, is_active:false },
+  { id:"d1", offer_number:"devis_de00001898", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis signé",       date_offre:"2025-01-10", date_validite:"2025-06-20", montant_ht:48200, is_active:true  },
+  { id:"d2", offer_number:"devis_de00001901", project_id:"p1", project_name:"AREFIM - REIMS (51)",    os_devis_statut:"Devis envoyé",      date_offre:"2024-12-01", date_validite:"2025-03-01", montant_ht:22000, is_active:false },
+  { id:"d3", offer_number:"devis_de00001910", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)", os_devis_statut:"Chiffrage en cours", date_offre:"2025-02-15", date_validite:"2025-07-15", montant_ht:67200, is_active:true  },
+  { id:"d4", offer_number:"devis_de00001918", project_id:"p3", project_name:"ENTREPÔT ROISSY (95)",   os_devis_statut:"Devis envoyé",      date_offre:"2025-03-01", date_validite:"2025-06-25", montant_ht:42800, is_active:true  },
+  { id:"d5", offer_number:"devis_de00001925", project_id:"p2", project_name:"LOGISTIQUE SENLIS (60)", os_devis_statut:"Classé sans suite",  date_offre:"2024-11-10", date_validite:"2025-01-10", montant_ht:31000, is_active:false },
 ];
 
 const MOCK_HISTORIQUE_INIT = [
-  { id:"h1", date:"2025-02-14", type:"Appel",        auteur:"ST",  note:"Relance devis AREFIM \u2014 client confirme signature prochaine semaine." },
-  { id:"h2", date:"2025-01-28", type:"Email",        auteur:"AM",  note:"Envoi devis actualis\u00e9 suite demande modification quantit\u00e9s." },
-  { id:"h3", date:"2025-01-10", type:"R\u00e9union", auteur:"ST",  note:"R\u00e9union de chantier sur site Reims. Points : planning T1, acc\u00e8s zone sud." },
-  { id:"h4", date:"2024-12-05", type:"Appel",        auteur:"MEM", note:"Premier contact pour le projet Senlis. RDV pris pour le 15/01." },
+  { id:"h1", date:"2025-02-14", type:"Appel",   auteur:"ST",  note:"Relance devis AREFIM — client confirme signature prochaine semaine." },
+  { id:"h2", date:"2025-01-28", type:"Email",   auteur:"AM",  note:"Envoi devis actualisé suite demande modification quantités." },
+  { id:"h3", date:"2025-01-10", type:"Réunion", auteur:"ST",  note:"Réunion de chantier sur site Reims. Points : planning T1, accès zone sud." },
+  { id:"h4", date:"2024-12-05", type:"Appel",   auteur:"MEM", note:"Premier contact pour le projet Senlis. RDV pris pour le 15/01." },
 ];
 
 // ─── UTILS ────────────────────────────────────────────────────────────────────
 const fmt      = n => new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
-const fmtDate  = d => d ? new Date(d).toLocaleDateString("fr-FR") : "\u2014";
+const fmtDate  = d => d ? new Date(d).toLocaleDateString("fr-FR") : "—";
 const diffDays = d => d ? Math.ceil((new Date(d)-new Date())/86400000) : null;
 
 // email → Prenom Nom lisible (pierre.martin@x.fr → Pierre Martin)
 const emailToName = email => {
   if (!email) return "";
+  // Si ce n'est pas un email (pas de @), retourner tel quel
+  if (!email.includes("@")) return email;
   const local = email.split("@")[0];
   return local.split(/[._-]/).map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(" ");
 };
@@ -141,11 +143,35 @@ const extractAddr = v => {
 };
 
 const normalizeType = v => {
-  if(!v) return "Autre - \u00c0 pr\u00e9ciser";
+  if(!v) return "Autre - À préciser";
   if(typeof v==="string") return v;
-  if(typeof v==="object") return v.display||v.name||"Autre - \u00c0 pr\u00e9ciser";
+  if(typeof v==="object") return v.display||v.name||"Autre - À préciser";
   return String(v);
 };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RÉSOLUTION USER ID → EMAIL
+// Bubble stocke l'email dans différents champs selon la config :
+//   - u.authentication.email.email  (le plus courant)
+//   - u.authentication.email        (parfois string directe)
+//   - u.email                       (champ custom ajouté manuellement)
+//   - u.Email                       (variante majuscule)
+// On essaie tous les chemins possibles.
+// ═══════════════════════════════════════════════════════════════════════════════
+function extractUserEmail(u) {
+  // Chemin 1 : authentication.email.email (structure Bubble standard)
+  if (u.authentication?.email?.email) return u.authentication.email.email;
+  // Chemin 2 : authentication.email (string directe)
+  if (u.authentication?.email && typeof u.authentication.email === "string") return u.authentication.email;
+  // Chemin 3 : champ custom "email" (minuscule)
+  if (u.email && typeof u.email === "string" && u.email.includes("@")) return u.email;
+  // Chemin 4 : champ custom "Email" (majuscule)
+  if (u.Email && typeof u.Email === "string" && u.Email.includes("@")) return u.Email;
+  // Chemin 5 : champ custom "user_email"
+  if (u.user_email && typeof u.user_email === "string") return u.user_email;
+  // Fallback : vide
+  return "";
+}
 
 async function fetchClientData(clientName){
   console.log("[FC] fetch:", clientName);
@@ -176,18 +202,36 @@ async function fetchClientData(clientName){
   }
 
   // Phase 2 : tables volumineuses + users
-  const [rawInterventions, rawOffers, rawItems, rawContacts, rawUsers] = await Promise.all([
+  let rawUsers = [];
+  try {
+    rawUsers = _cache.users || await fetchAllPages("user").then(r=>{ _cache.users=r; return r; });
+  } catch(e) {
+    console.warn("[FC] ⚠ Impossible de charger la table User :", e.message);
+    console.warn("[FC] Les noms d'intervenants ne pourront pas être résolus.");
+  }
+
+  const [rawInterventions, rawOffers, rawItems, rawContacts] = await Promise.all([
     _cache.interventions || fetchAllPages("interventions").then(r=>{ _cache.interventions=r; return r; }),
     _cache.offers        || fetchAllPages("offers_history_documents").then(r=>{ _cache.offers=r; return r; }),
     _cache.items         || fetchAllPages("items_devis").then(r=>{ _cache.items=r; return r; }),
     _cache.contacts      || fetchAllPages("contacts").then(r=>{ _cache.contacts=r; return r; }),
-    _cache.users         || fetchAllPages("user").then(r=>{ _cache.users=r; return r; }),
   ]);
 
-  // Index User : _id → email
+  // ── Index User : _id → email ──────────────────────────────────────────────
   const userById = {};
-  rawUsers.forEach(u => { userById[u._id] = u.email || ""; });
-  console.log("[FC] users:", rawUsers.length);
+  rawUsers.forEach(u => {
+    const email = extractUserEmail(u);
+    userById[u._id] = email;
+  });
+
+  // DEBUG : afficher le premier user pour comprendre la structure
+  if (rawUsers.length > 0) {
+    console.log("[FC] ✓ Users chargés:", rawUsers.length);
+    console.log("[FC] Premier user (structure):", JSON.stringify(rawUsers[0], null, 2));
+    console.log("[FC] Mapping userById (5 premiers):", Object.fromEntries(Object.entries(userById).slice(0,5)));
+  } else {
+    console.warn("[FC] ⚠ Table user vide ou inaccessible — les noms ne seront pas résolus");
+  }
 
   // Filtres JS
   const rawIntervF   = rawInterventions.filter(i=>projectIds.has(i._project_attached));
@@ -195,6 +239,20 @@ async function fetchClientData(clientName){
   const rawItemsF    = rawItems.filter(i=>projectIds.has(i._project_attached));
   const rawContactsF = rawContacts.filter(c=>c._company_attached===companyId);
   console.log("[FC] interv:", rawIntervF.length, "| offers:", rawOffersF.length, "| items:", rawItemsF.length, "| contacts:", rawContactsF.length);
+
+  // DEBUG : afficher la première intervention pour voir les champs user
+  if (rawIntervF.length > 0) {
+    const sample = rawIntervF[0];
+    console.log("[FC] Première intervention (champs user) :", {
+      _list_user_concerned: sample._list_user_concerned,
+      _user_report_assigned: sample._user_report_assigned,
+      // Autres champs potentiels
+      agent_name: sample.agent_name,
+      rapport_name: sample.rapport_name,
+      user_concerned: sample.user_concerned,
+      intervenant: sample.intervenant,
+    });
+  }
 
   // Items groupes par devis
   const itemsByOffer = {};
@@ -227,6 +285,20 @@ async function fetchClientData(clientName){
     if(pid){ denomByProj[pid]=(denomByProj[pid]||0)+ht; if(isI) numByProj[pid]=(numByProj[pid]||0)+ht; }
   });
 
+  // ── Résolution User ID → email ────────────────────────────────────────────
+  // Si userById est vide, le fallback affichera "Inconnu" au lieu de l'ID brut
+  const resolveUser = (id) => {
+    if (!id) return "";
+    // Si c'est déjà un email, le retourner directement
+    if (typeof id === "string" && id.includes("@")) return id;
+    // Chercher dans le mapping
+    const email = userById[id];
+    if (email) return email;
+    // Fallback : retourner vide (sera affiché comme "Inconnu" dans l'UI)
+    console.warn("[FC] User ID non résolu:", id);
+    return "";
+  };
+
   // Interventions groupees — resolution IDs User → emails
   const intervByProj={};
   rawIntervF.forEach(i=>{
@@ -235,12 +307,12 @@ async function fetchClientData(clientName){
     intervByProj[pid].push({
       id:i._id,
       name:i.name||"Sans nom",
-      status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"\u2014",
+      status:normalizeType(i.intervention_status||i.OS_project_intervention_status)||"—",
       date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
       // _list_user_concerned : liste d'IDs Bubble User → emails
-      agents: toArray(i._list_user_concerned).map(id => userById[id] || id),
+      agents: toArray(i._list_user_concerned).map(id => resolveUser(id)),
       // _user_report_assigned : ID Bubble User → email
-      rapport: userById[i._user_report_assigned] || i._user_report_assigned || "",
+      rapport: resolveUser(i._user_report_assigned),
     });
   });
 
@@ -285,7 +357,7 @@ async function fetchClientData(clientName){
     created:company["Created Date"]?.slice(0,10)||"",
   };
 
-  console.log("[FC] OK");
+  console.log("[FC] OK ✓");
   return { client, projets, devis, contacts };
 }
 
@@ -340,21 +412,21 @@ function ProjetAccordeon({projet}){
         onMouseLeave={e=>{if(!open)e.currentTarget.style.background=T.card;}}>
         <div>
           <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:3}}>{projet.name}</div>
-          <div style={{fontSize:11,color:T.textSoft}}>{projet.type} &middot; {projet.address}</div>
+          <div style={{fontSize:11,color:T.textSoft}}>{projet.type} · {projet.address}</div>
         </div>
         <Badge label={projet.status}/>
         <span style={{fontSize:13,fontWeight:700,color:T.indigo,textAlign:"right"}}>{fmt(projet.ca_total)}</span>
         <ProgressBar value={projet.avancement}/>
-        <span style={{color:T.textSoft,fontSize:13,textAlign:"center"}}>{open?"\u25b2":"\u25bc"}</span>
+        <span style={{color:T.textSoft,fontSize:13,textAlign:"center"}}>{open?"▲":"▼"}</span>
       </div>
 
       {open&&(
         <div style={{background:T.bg,borderTop:`1px solid ${T.border}`}}>
           {(projet.interventions||[]).length===0
-            ?<div style={{padding:"20px 16px",fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucune intervention enregistr\u00e9e</div>
+            ?<div style={{padding:"20px 16px",fontSize:12,color:T.textSoft,textAlign:"center"}}>Aucune intervention enregistrée</div>
             :(projet.interventions||[]).map((interv,idx)=>{
               const jours=diffDays(interv.date);
-              const dateColor=interv.status==="Planifi\u00e9"?(jours<=7?T.rose:T.violet):T.textSoft;
+              const dateColor=interv.status==="Planifié"?(jours<=7?T.rose:T.violet):T.textSoft;
               return (
                 <div key={interv.id}
                   style={{display:"grid",gridTemplateColumns:"26px 1fr 110px 140px 1fr 1fr",gap:10,padding:"11px 16px",alignItems:"center",
@@ -371,36 +443,36 @@ function ProjetAccordeon({projet}){
                   <Badge label={interv.status}/>
 
                   {/* Date */}
-                  <span style={{fontSize:11,color:dateColor,fontWeight:interv.status==="Planifi\u00e9"?700:400}}>
+                  <span style={{fontSize:11,color:dateColor,fontWeight:interv.status==="Planifié"?700:400}}>
                     {fmtDate(interv.date)}
-                    {interv.status==="Planifi\u00e9"&&jours!==null&&
+                    {interv.status==="Planifié"&&jours!==null&&
                       <span style={{marginLeft:4}}>({jours<=0?"Auj.":`J-${jours}`})</span>
                     }
                   </span>
 
-                  {/* Intervenants — _list_user_concerned IDs resolus en emails */}
+                  {/* Intervenants — emails résolus depuis User IDs */}
                   <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center"}}>
-                    {(interv.agents||[]).length===0
-                      ? <span style={{fontSize:10,color:T.textSoft}}>\u2014</span>
-                      : (interv.agents||[]).map((email,i)=>(
+                    {(interv.agents||[]).length===0 || (interv.agents.length===1 && !interv.agents[0])
+                      ? <span style={{fontSize:10,color:T.textSoft,fontStyle:"italic"}}>Non assigné</span>
+                      : (interv.agents||[]).filter(Boolean).map((email,i)=>(
                           <span key={i} title={email}
                             style={{fontSize:10,padding:"2px 7px",borderRadius:20,
                               background:T.tealL,color:T.teal,fontWeight:600,
                               maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                            {emailToName(email)}
+                            {email.includes("@") ? emailToName(email) : (email || "Inconnu")}
                           </span>
                         ))
                     }
                   </div>
 
-                  {/* Rapport — _user_report_assigned ID resolu en email */}
+                  {/* Rapport — email résolu depuis User ID */}
                   <span style={{fontSize:11,color:T.textSoft}}>
                     <span style={{fontSize:10,marginRight:4}}>Rapport :</span>
-                    {interv.rapport
+                    {interv.rapport && interv.rapport.includes("@")
                       ? <span title={interv.rapport} style={{color:T.textMed,fontWeight:600}}>
                           {emailToName(interv.rapport)}
                         </span>
-                      : <span style={{color:T.textSoft}}>\u2014</span>
+                      : <span style={{color:T.textSoft,fontStyle:"italic"}}>{interv.rapport || "Non assigné"}</span>
                     }
                   </span>
                 </div>
@@ -426,19 +498,19 @@ function DevisRow({d, idx}){
     <>
       <div onClick={()=>(d.items||[]).length&&setOpen(o=>!o)}
         style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"11px 16px",
-          borderBottom:open&&(d.items||[]).length?`none`:`1px solid ${T.border}`,
+          borderBottom:open&&(d.items||[]).length?"none":`1px solid ${T.border}`,
           alignItems:"center",opacity:d.is_active?1:0.55,cursor:(d.items||[]).length?"pointer":"default",
           background:open?T.indigoL:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s"}}
         onMouseEnter={e=>{if(!open)e.currentTarget.style.background=T.cardAlt;}}
         onMouseLeave={e=>{e.currentTarget.style.background=open?T.indigoL:idx%2===0?T.card:T.cardAlt;}}>
-        <span style={{color:T.textSoft,fontSize:11,textAlign:"center"}}>{(d.items||[]).length?open?"\u25b2":"\u25bc":""}</span>
+        <span style={{color:T.textSoft,fontSize:11,textAlign:"center"}}>{(d.items||[]).length?open?"▲":"▼":""}</span>
         <span style={{fontSize:11,color:T.textSoft,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.offer_number}</span>
         <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.project_name}</span>
         <Badge label={d.os_devis_statut}/>
         <span style={{fontSize:13,fontWeight:700,color:T.text,textAlign:"right"}}>{fmt(d.montant_ht)}</span>
         <div>
           <div style={{fontSize:11,color:T.textMed}}>{fmtDate(d.date_offre)}</div>
-          {d.date_validite&&<div style={{fontSize:10,color:expColor,fontWeight:exp!==null&&exp<=7?700:400}}>{exp<=0?"Expir\u00e9":`J-${exp}`}</div>}
+          {d.date_validite&&<div style={{fontSize:10,color:expColor,fontWeight:exp!==null&&exp<=7?700:400}}>{exp<=0?"Expiré":`J-${exp}`}</div>}
         </div>
         <div style={{display:"flex",justifyContent:"center"}}>
           <div style={{width:10,height:10,borderRadius:"50%",background:d.is_active?T.sage:T.border,border:`2px solid ${d.is_active?T.sage:T.borderMd}`}}/>
@@ -447,7 +519,7 @@ function DevisRow({d, idx}){
       {open&&(d.items||[]).length>0&&(
         <div style={{background:T.indigoL,borderBottom:`1px solid ${T.border}`,padding:"0 16px 10px 46px"}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 70px 70px 100px 100px",gap:8,padding:"6px 0",marginBottom:4,borderBottom:`1px solid ${T.border}`}}>
-            {["D\u00e9signation","Qt\u00e9","Unit\u00e9","P.U. HT","Total HT"].map(h=>
+            {["Désignation","Qté","Unité","P.U. HT","Total HT"].map(h=>
               <span key={h} style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>{h}</span>
             )}
           </div>
@@ -474,7 +546,7 @@ function TabDevisClient({devis}){
   return (
     <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
       <div style={{display:"grid",gridTemplateColumns:"28px 150px 1fr 155px 100px 100px 50px",gap:8,padding:"10px 16px",background:T.cardAlt,borderBottom:`2px solid ${T.border}`}}>
-        {["","R\u00e9f\u00e9rence","Projet","Statut","Montant HT","Date","Actif"].map(h=>(
+        {["","Référence","Projet","Statut","Montant HT","Date","Actif"].map(h=>(
           <span key={h} style={{fontSize:11,color:T.textSoft,fontWeight:700,letterSpacing:"0.05em",textTransform:"uppercase"}}>{h}</span>
         ))}
       </div>
@@ -507,12 +579,12 @@ function ModalContact({onClose,onSave}){
           <div><label style={lbl}>Date</label><input type="date" value={form.date} onChange={e=>set("date",e.target.value)} style={inp}/></div>
           <div><label style={lbl}>Type</label>
             <select value={form.type} onChange={e=>set("type",e.target.value)} style={inp}>
-              {["Appel","Email","R\u00e9union","Note"].map(t=><option key={t}>{t}</option>)}
+              {["Appel","Email","Réunion","Note"].map(t=><option key={t}>{t}</option>)}
             </select>
           </div>
         </div>
-        <div style={{marginBottom:14}}><label style={lbl}>Auteur</label><input value={form.auteur} onChange={e=>set("auteur",e.target.value)} placeholder="Initiales ou nom\u2026" style={inp}/></div>
-        <div style={{marginBottom:20}}><label style={lbl}>Note</label><textarea value={form.note} onChange={e=>set("note",e.target.value)} placeholder="R\u00e9sum\u00e9 de l'\u00e9change\u2026" rows={4} style={{...inp,resize:"vertical",lineHeight:1.5}}/></div>
+        <div style={{marginBottom:14}}><label style={lbl}>Auteur</label><input value={form.auteur} onChange={e=>set("auteur",e.target.value)} placeholder="Initiales ou nom…" style={inp}/></div>
+        <div style={{marginBottom:20}}><label style={lbl}>Note</label><textarea value={form.note} onChange={e=>set("note",e.target.value)} placeholder="Résumé de l'échange…" rows={4} style={{...inp,resize:"vertical",lineHeight:1.5}}/></div>
         <div style={{display:"flex",gap:10,justifyContent:"flex-end"}}>
           <button onClick={onClose} style={{padding:"8px 18px",borderRadius:8,border:`1px solid ${T.border}`,background:T.card,color:T.textMed,fontSize:13,fontWeight:600,cursor:"pointer"}}>Annuler</button>
           <button onClick={()=>{onSave(form);onClose();}} style={{padding:"8px 18px",borderRadius:8,border:"none",background:`linear-gradient(135deg,${T.indigo},${T.teal})`,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>Enregistrer</button>
@@ -554,9 +626,9 @@ export default function FicheClient({clientId, clientName}){
   const caTotal    = devis.filter(d=>d.is_active).reduce((s,d)=>s+(d.montant_ht||0),0);
   const nbProjets  = projets.length;
   const nbInterv   = projets.flatMap(p=>p.interventions).length;
-  const nbPlanif   = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifi\u00e9").length;
+  const nbPlanif   = projets.flatMap(p=>p.interventions).filter(i=>i.status==="Planifié").length;
   const nbDevis    = devis.length;
-  const caByProjet = projets.map(p=>({name:(p.name||'').split(' ')[0]||'\u2014',ca:p.ca_total}));
+  const caByProjet = projets.map(p=>({name:(p.name||'').split(' ')[0]||'—',ca:p.ca_total}));
 
   const contactsRapides = contacts.filter(c=>["Principal","Secondaire","Contact sur site"].includes(c.type));
   const today = new Date(); today.setHours(0,0,0,0);
@@ -570,17 +642,17 @@ export default function FicheClient({clientId, clientName}){
   const addHistorique = entry => setHistorique(h=>[{id:`h${Date.now()}`,...entry},...h]);
 
   const TABS = [
-    ["projets",    "\ud83d\udcc1 Projets & Interventions"],
-    ["devis",      "\ud83d\udcc4 Devis"],
-    ["contacts",   "\ud83d\udc65 Contacts"],
-    ["historique", "\ud83d\udccb Historique"],
+    ["projets",    "📁 Projets & Interventions"],
+    ["devis",      "📄 Devis"],
+    ["contacts",   "👥 Contacts"],
+    ["historique", "📋 Historique"],
   ];
 
   if(fetchLoading) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center"}}>
         <div style={{width:40,height:40,border:`3px solid ${T.border}`,borderTopColor:T.indigo,borderRadius:"50%",animation:"spin 0.8s linear infinite",margin:"0 auto 14px"}}/>
-        <div style={{fontSize:13,color:T.textSoft}}>Chargement de la fiche <strong>{clientName}</strong>\u2026</div>
+        <div style={{fontSize:13,color:T.textSoft}}>Chargement de la fiche <strong>{clientName}</strong>…</div>
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     </div>
@@ -589,9 +661,9 @@ export default function FicheClient({clientId, clientName}){
   if(fetchError) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.rose}33`}}>
-        <div style={{fontSize:32,marginBottom:12}}>{"\u26a0\ufe0f"}</div>
+        <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
         <div style={{fontSize:14,color:T.rose,fontWeight:700,marginBottom:8}}>{fetchError}</div>
-        <div style={{fontSize:12,color:T.textSoft}}>V\u00e9rifie que USE_MOCK=false et que le clientId est correct</div>
+        <div style={{fontSize:12,color:T.textSoft}}>Vérifie que USE_MOCK=false et que le clientId est correct</div>
       </div>
     </div>
   );
@@ -599,7 +671,7 @@ export default function FicheClient({clientId, clientName}){
   if(!clientId && !USE_MOCK) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"60vh",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
       <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.border}`}}>
-        <div style={{fontSize:32,marginBottom:12}}>{"\ud83d\udd0d"}</div>
+        <div style={{fontSize:32,marginBottom:12}}>🔍</div>
         <div style={{fontSize:14,color:T.textMed,fontWeight:700}}>Recherche un client dans la barre en haut</div>
       </div>
     </div>
@@ -627,21 +699,21 @@ export default function FicheClient({clientId, clientName}){
                 <div>
                   <div style={{fontSize:22,fontWeight:800,color:T.text}}>{client.name}</div>
                   <div style={{fontSize:12,color:T.textSoft,marginTop:2}}>
-                    Client depuis {fmtDate(client.created)} &middot; SIRET {client.siret}
+                    Client depuis {fmtDate(client.created)} · SIRET {client.siret}
                   </div>
                 </div>
               </div>
               <div style={{display:"flex",gap:16,flexWrap:"wrap",marginTop:6}}>
-                <span style={{fontSize:12,color:T.textMed}}>{"\ud83d\udccd"} {client.address}</span>
-                <span style={{fontSize:12,color:T.textMed}}>{"\ud83d\udcde"} {client.phone}</span>
-                <span style={{fontSize:12,color:T.textMed}}>{"\u2709\ufe0f"} {client.email}</span>
+                <span style={{fontSize:12,color:T.textMed}}>📍 {client.address}</span>
+                <span style={{fontSize:12,color:T.textMed}}>📞 {client.phone}</span>
+                <span style={{fontSize:12,color:T.textMed}}>✉️ {client.email}</span>
               </div>
             </div>
             <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
               <StatPill label="CA Actif"       value={fmt(caTotal)} color={T.indigo}/>
               <StatPill label="Projets"         value={nbProjets}    color={T.teal}/>
               <StatPill label="Interventions"   value={nbInterv}     color={T.sage}/>
-              <StatPill label="Planifi\u00e9es" value={nbPlanif}     color={T.violet}/>
+              <StatPill label="Planifiées"      value={nbPlanif}     color={T.violet}/>
               <StatPill label="Devis"           value={nbDevis}      color={T.amber}/>
             </div>
           </div>
@@ -694,8 +766,8 @@ export default function FicheClient({clientId, clientName}){
                             <Badge label={ct.type} color={c}/>
                           </div>
                           <div style={{fontSize:13,fontWeight:700,color:T.text,marginBottom:4}}>{ct.name}</div>
-                          <div style={{fontSize:11,color:T.textSoft,marginBottom:2}}>{"\u2709\ufe0f"} {ct.email}</div>
-                          <div style={{fontSize:11,color:T.textSoft}}>{"\ud83d\udcde"} {ct.phone}</div>
+                          <div style={{fontSize:11,color:T.textSoft,marginBottom:2}}>✉️ {ct.email}</div>
+                          <div style={{fontSize:11,color:T.textSoft}}>📞 {ct.phone}</div>
                         </div>
                       );
                     })}
@@ -711,7 +783,7 @@ export default function FicheClient({clientId, clientName}){
                   <div style={{position:"absolute",left:16,top:0,bottom:0,width:2,background:T.border,borderRadius:1}}/>
                   {historique.map((h,idx)=>{
                     const c=HISTORIQUE_COLOR[h.type]||T.textSoft;
-                    const icon=h.type==="Appel"?"\ud83d\udcde":h.type==="Email"?"\u2709\ufe0f":h.type==="R\u00e9union"?"\ud83e\udd1d":"\ud83d\udcdd";
+                    const icon=h.type==="Appel"?"📞":h.type==="Email"?"✉️":h.type==="Réunion"?"🤝":"📝";
                     return (
                       <div key={h.id} style={{display:"flex",gap:16,marginBottom:idx<historique.length-1?20:0,position:"relative"}}>
                         <div style={{width:32,height:32,borderRadius:"50%",background:`${c}15`,border:`2px solid ${c}`,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,zIndex:1}}>
@@ -757,7 +829,7 @@ export default function FicheClient({clientId, clientName}){
 
             <Card title="Prochaines interventions" accent={T.violet}>
               {prochaines.length===0
-                ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifi\u00e9e</div>
+                ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucune intervention planifiée</div>
                 :(prochaines||[]).map((i,idx)=>{
                   const d=diffDays(i.date);
                   const dc=d<=3?T.rose:d<=7?T.amber:T.violet;
@@ -769,9 +841,9 @@ export default function FicheClient({clientId, clientName}){
                       </div>
                       <div style={{fontSize:11,color:T.textSoft,marginBottom:4}}>{i.projet}</div>
                       <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
-                        {(i.agents||[]).map((email,ei)=>(
+                        {(i.agents||[]).filter(Boolean).map((email,ei)=>(
                           <span key={ei} title={email} style={{fontSize:10,padding:"2px 7px",borderRadius:20,background:T.tealL,color:T.teal,fontWeight:600}}>
-                            {emailToName(email)}
+                            {email.includes("@") ? emailToName(email) : (email || "Inconnu")}
                           </span>
                         ))}
                       </div>
