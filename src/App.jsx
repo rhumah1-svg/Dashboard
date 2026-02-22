@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo, useRef, Component } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
-import FicheClient from "./FicheClient";
-import Login from "./Login";
-import TableContacts from "./TableContacts";
-import { isAuthenticated, getUser, logout, clearSession, onSessionExpired, fetchAllPages } from "./api";
+import FicheClient from './FicheClient';
+import Login from './Login';
+import TableContacts from './TableContacts';
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
+// Capture les crashes React et affiche l'erreur exacte au lieu d'un écran blanc
 class ErrorBoundary extends Component {
   constructor(props){ super(props); this.state={error:null}; }
   static getDerivedStateFromError(e){ return {error:e}; }
@@ -17,7 +17,7 @@ class ErrorBoundary extends Component {
         <div style={{padding:40,maxWidth:800,margin:"40px auto",fontFamily:"monospace"}}>
           <div style={{background:"#FAEDF1",border:"1px solid #BF506A",borderRadius:12,padding:24}}>
             <div style={{fontSize:16,fontWeight:800,color:"#BF506A",marginBottom:12}}>
-              Erreur React — copie ce message et envoie-le en chat
+              💥 Erreur React — copie ce message et envoie-le en chat
             </div>
             <pre style={{fontSize:12,color:"#1A2640",whiteSpace:"pre-wrap",wordBreak:"break-all",background:"#fff",padding:16,borderRadius:8,border:"1px solid #E3E9F2"}}>
               {this.state.error?.message}{"\n\n"}{this.state.error?.stack?.slice(0,600)}
@@ -34,40 +34,66 @@ class ErrorBoundary extends Component {
   }
 }
 
-// ─── THÈME PASTEL ─────────────────────────────────────────────────────────────
-const T = {
-  bg:"#F2F5F9", card:"#FFFFFF", cardAlt:"#F8FAFC",
-  border:"#E3E9F2", borderMd:"#C8D4E3",
-  text:"#1A2640", textMed:"#475C78", textSoft:"#8BA0B8",
-  indigo:"#5B72D4", indigoL:"#EDF0FB",
-  teal:"#3A9E9E",   tealL:"#E6F5F5",
-  sage:"#4E9468",   sageL:"#E8F4EE",
-  amber:"#C07A2E",  amberL:"#FBF0E4",
-  rose:"#BF506A",   roseL:"#FAEDF1",
-  violet:"#7E5BB5", violetL:"#F2EDF9",
-  sky:"#3E8EBF",    skyL:"#E5F3FA",
-  coral:"#C9614A",  coralL:"#FAEAE6",
-};
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+const USE_MOCK = false;
+const DASH_SECRET = "qd_x9k2m7p4nz3";
 
-const STATUT_DEVIS=["Saisie d'information","Chiffrage en cours","Validé par l'administration","Devis envoyé","Devis signé","Projet terminé","A relancer","Relance envoyée","Classé sans suite","Non formalisé"];
-const STATUT_INTERV=["Planifié","En cours","Terminé","Annulé"];
-const STATUTS_SIGNES=["Devis signé","Projet terminé"];
-const STATUTS_PIPELINE=["Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée"];
-const S_COLOR={
-  "Saisie d'information":T.textSoft,"Chiffrage en cours":T.sky,"Validé par l'administration":T.violet,
-  "Devis envoyé":T.indigo,"Devis signé":T.sage,"Projet terminé":"#2E7A4E",
-  "A relancer":T.amber,"Relance envoyée":T.coral,"Classé sans suite":T.rose,"Non formalisé":T.textSoft,
-  "Planifié":T.violet,"En cours":T.amber,"Terminé":T.sage,"Annulé":T.rose,
-};
-const CHART_COLORS=[T.indigo,T.teal,T.sage,T.amber,T.rose,T.violet,T.sky,T.coral,"#7BAA4E"];
-const fmt     =n=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
-const fmtK    =n=>n>=1000?`${(n/1000).toFixed(0)}k€`:`${n}€`;
-const fmtDate =d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
-const mLabel  =d=>new Date(d).toLocaleDateString("fr-FR",{month:"short",year:"2-digit"});
-const diffDays=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
-const inRange =(ds,f,t)=>{if(!ds)return true;if(f&&ds<f)return false;if(t&&ds>t)return false;return true;};
+// ─── MOCK DATA ────────────────────────────────────────────────────────────────
+const MOCK_COMPANIES = [
+  { id:"c1", name:"IDEC" },{ id:"c2", name:"COGESTRA" },
+  { id:"c3", name:"ACME Construction" },{ id:"c4", name:"VINCI Construction" },
+  { id:"c5", name:"EIFFAGE" },{ id:"c6", name:"SOGEA" },
+];
+const MOCK_PROJECTS = [
+  { id:"p1", name:"AREFIM - REIMS (51)",       _company_attached:"c1", OS_prestations_type:"Dallage",          OS_devis_status:"Devis signé",         avancement:0.67 },
+  { id:"p2", name:"LOZENNES (59)",              _company_attached:"c2", OS_prestations_type:"Réparation béton", OS_devis_status:"Devis envoyé",         avancement:0.32 },
+  { id:"p3", name:"Chantier Paris 15",          _company_attached:"c3", OS_prestations_type:"Dallage",          OS_devis_status:"A relancer",           avancement:0.10 },
+  { id:"p4", name:"Parking Rouen",              _company_attached:"c4", OS_prestations_type:"Marquage sol",     OS_devis_status:"Saisie d'information", avancement:0    },
+  { id:"p5", name:"Zone artisanale Creil",      _company_attached:"c5", OS_prestations_type:"Dallage",          OS_devis_status:"Devis signé",          avancement:1.0  },
+  { id:"p6", name:"ZI Amiens Nord",             _company_attached:"c2", OS_prestations_type:"Réparation béton", OS_devis_status:"Relance envoyée",      avancement:0.48 },
+  { id:"p7", name:"Plateforme Marne-la-Vallée", _company_attached:"c6", OS_prestations_type:"Dallage",          OS_devis_status:"Chiffrage en cours",   avancement:0    },
+];
+const MOCK_OFFERS = [
+  { id:"o1",  offer_number:"devis_de00001898", os_devis_statut:"Devis envoyé",        date_offre:"2025-01-10", date_validite:"2025-06-20", _project_attached:"p1", montant_ht:48200,  is_active:true  },
+  { id:"o2",  offer_number:"devis_de00001901", os_devis_statut:"Devis signé",          date_offre:"2025-01-05", date_validite:"2025-07-28", _project_attached:"p2", montant_ht:127500, is_active:true  },
+  { id:"o3",  offer_number:"devis_de00001905", os_devis_statut:"Devis envoyé",         date_offre:"2025-03-20", date_validite:"2025-06-19", _project_attached:"p3", montant_ht:33750,  is_active:true  },
+  { id:"o4",  offer_number:"devis_de00001910", os_devis_statut:"A relancer",           date_offre:"2024-12-15", date_validite:"2025-06-21", _project_attached:"p4", montant_ht:89000,  is_active:true  },
+  { id:"o5",  offer_number:"devis_de00001912", os_devis_statut:"Classé sans suite",    date_offre:"2024-12-01", date_validite:"2025-01-15", _project_attached:"p1", montant_ht:22000,  is_active:false },
+  { id:"o6",  offer_number:"devis_de00001915", os_devis_statut:"Devis signé",          date_offre:"2025-02-12", date_validite:"2025-08-15", _project_attached:"p6", montant_ht:215000, is_active:true  },
+  { id:"o7",  offer_number:"devis_de00001918", os_devis_statut:"Devis envoyé",         date_offre:"2025-01-25", date_validite:"2025-06-25", _project_attached:"p3", montant_ht:67300,  is_active:true  },
+  { id:"o8",  offer_number:"devis_de00001920", os_devis_statut:"Relance envoyée",      date_offre:"2025-01-08", date_validite:"2025-06-22", _project_attached:"p4", montant_ht:156000, is_active:true  },
+  { id:"o9",  offer_number:"devis_de00001922", os_devis_statut:"Saisie d'information", date_offre:"2025-02-01", date_validite:"2025-07-20", _project_attached:"p7", montant_ht:98500,  is_active:true  },
+  { id:"o10", offer_number:"devis_de00001925", os_devis_statut:"Devis signé",          date_offre:"2025-02-18", date_validite:"2025-08-01", _project_attached:"p5", montant_ht:310000, is_active:true  },
+];
+const MOCK_INTERVENTIONS = [
+  { id:"i1",  name:"Reprise fissures dalle",     _project_attached:"p1", date:"2025-01-15", OS_prestations_type:"Réparation béton", intervention_status:"Terminé",  address:{ city:"Reims"  } },
+  { id:"i2",  name:"Coulage dalle hangar",        _project_attached:"p2", date:"2024-11-20", OS_prestations_type:"Dallage",          intervention_status:"Terminé",  address:{ city:"Lille"  } },
+  { id:"i3",  name:"Marquage parking",            _project_attached:"p4", date:"2025-01-12", OS_prestations_type:"Marquage sol",     intervention_status:"Terminé",  address:{ city:"Rouen"  } },
+  { id:"i4",  name:"Traitement sol industriel",   _project_attached:"p5", date:"2025-01-22", OS_prestations_type:"Dallage",          intervention_status:"En cours", address:{ city:"Creil"  } },
+  { id:"i5",  name:"Injection résine fissures",   _project_attached:"p6", date:"2024-12-10", OS_prestations_type:"Réparation béton", intervention_status:"Terminé",  address:{ city:"Amiens" } },
+  { id:"i6",  name:"Ponçage + durcisseur",        _project_attached:"p2", date:"2025-01-05", OS_prestations_type:"Dallage",          intervention_status:"Terminé",  address:{ city:"Lille"  } },
+  { id:"i7",  name:"Reprise joint",               _project_attached:"p1", date:"2025-03-03", OS_prestations_type:"Réparation béton", intervention_status:"Planifié", address:{ city:"Reims"  } },
+  { id:"i8",  name:"Coulage dallage neuf",        _project_attached:"p7", date:"2025-02-12", OS_prestations_type:"Dallage",          intervention_status:"Planifié", address:{ city:"Marne"  } },
+  { id:"i9",  name:"Traitement anti-poussière",   _project_attached:"p3", date:"2025-02-05", OS_prestations_type:"Dallage",          intervention_status:"En cours", address:{ city:"Paris"  } },
+  { id:"i10", name:"Ragréage surface",            _project_attached:"p6", date:"2025-01-28", OS_prestations_type:"Réparation béton", intervention_status:"Terminé",  address:{ city:"Amiens" } },
+  { id:"i11", name:"Joints souples",              _project_attached:"p5", date:"2025-02-01", OS_prestations_type:"Réparation béton", intervention_status:"En cours", address:{ city:"Creil"  } },
+  { id:"i12", name:"Marquage allées",             _project_attached:"p2", date:"2025-03-15", OS_prestations_type:"Marquage sol",     intervention_status:"Planifié", address:{ city:"Lille"  } },
+];
 
-// ─── FETCH (via API sécurisée) ────────────────────────────────────────────────
+// ─── FETCH ────────────────────────────────────────────────────────────────────
+async function fetchAllPages(endpoint) {
+  let results=[], cursor=0;
+  while (true) {
+    const res  = await fetch(`/api/bubble?table=${endpoint}&cursor=${cursor}&secret=${DASH_SECRET}`);
+    const data = await res.json();
+    const page = data.response?.results||[];
+    results = results.concat(page);
+    if ((data.response?.remaining??0)===0) break;
+    cursor += page.length;
+  }
+  return results;
+}
+
 function extractCity(a) {
   if (!a?.address) return null;
   const p=a.address.split(",");
@@ -75,6 +101,15 @@ function extractCity(a) {
 }
 
 async function fetchAll() {
+  if (USE_MOCK) {
+    const cm=Object.fromEntries(MOCK_COMPANIES.map(c=>[c.id,c]));
+    const pm=Object.fromEntries(MOCK_PROJECTS.map(p=>[p.id,{...p,_company_attached:cm[p._company_attached]}]));
+    return {
+      offers: MOCK_OFFERS.map(o=>({...o,_project_attached:pm[o._project_attached]})),
+      interventions: MOCK_INTERVENTIONS.map(i=>({...i,_project_attached:pm[i._project_attached]})),
+      projects: Object.values(pm),
+    };
+  }
   const [rawOffers,rawProjects,rawInterventions,rawCompanies,rawItems] = await Promise.all([
     fetchAllPages("offers_history_documents"),
     fetchAllPages("projects"),
@@ -130,7 +165,40 @@ async function fetchAll() {
   return {offers, interventions, projects:Object.values(projectsMap)};
 }
 
-// ─── UI COMPONENTS ────────────────────────────────────────────────────────────
+// ─── THÈME PASTEL ─────────────────────────────────────────────────────────────
+const T = {
+  bg:"#F2F5F9", card:"#FFFFFF", cardAlt:"#F8FAFC",
+  border:"#E3E9F2", borderMd:"#C8D4E3",
+  text:"#1A2640", textMed:"#475C78", textSoft:"#8BA0B8",
+  indigo:"#5B72D4", indigoL:"#EDF0FB",
+  teal:"#3A9E9E",   tealL:"#E6F5F5",
+  sage:"#4E9468",   sageL:"#E8F4EE",
+  amber:"#C07A2E",  amberL:"#FBF0E4",
+  rose:"#BF506A",   roseL:"#FAEDF1",
+  violet:"#7E5BB5", violetL:"#F2EDF9",
+  sky:"#3E8EBF",    skyL:"#E5F3FA",
+  coral:"#C9614A",  coralL:"#FAEAE6",
+};
+
+const STATUT_DEVIS=["Saisie d'information","Chiffrage en cours","Validé par l'administration","Devis envoyé","Devis signé","Projet terminé","A relancer","Relance envoyée","Classé sans suite","Non formalisé"];
+const STATUT_INTERV=["Planifié","En cours","Terminé","Annulé"];
+const STATUTS_SIGNES=["Devis signé","Projet terminé"];
+const STATUTS_PIPELINE=["Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée"];
+const S_COLOR={
+  "Saisie d'information":T.textSoft,"Chiffrage en cours":T.sky,"Validé par l'administration":T.violet,
+  "Devis envoyé":T.indigo,"Devis signé":T.sage,"Projet terminé":"#2E7A4E",
+  "A relancer":T.amber,"Relance envoyée":T.coral,"Classé sans suite":T.rose,"Non formalisé":T.textSoft,
+  "Planifié":T.violet,"En cours":T.amber,"Terminé":T.sage,"Annulé":T.rose,
+};
+const CHART_COLORS=[T.indigo,T.teal,T.sage,T.amber,T.rose,T.violet,T.sky,T.coral,"#7BAA4E"];
+const fmt     =n=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
+const fmtK    =n=>n>=1000?`${(n/1000).toFixed(0)}k€`:`${n}€`;
+const fmtDate =d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
+const mLabel  =d=>new Date(d).toLocaleDateString("fr-FR",{month:"short",year:"2-digit"});
+const diffDays=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
+const inRange =(ds,f,t)=>{if(!ds)return true;if(f&&ds<f)return false;if(t&&ds>t)return false;return true;};
+
+// ─── UI ───────────────────────────────────────────────────────────────────────
 function Badge({label}){
   const c=S_COLOR[label]||T.textSoft;
   return <span style={{fontSize:11,fontWeight:600,padding:"3px 9px",borderRadius:20,color:c,background:`${c}18`,border:`1px solid ${c}30`,whiteSpace:"nowrap",display:"inline-block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</span>;
@@ -589,7 +657,7 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
   );
 }
 
-// ─── SEARCHBOX CLIENT ─────────────────────────────────────────────────────────
+// ─── SEARCHBOX CLIENT (dans le header) ───────────────────────────────────────
 function ClientSearchBox({companies, onSelect}){
   const [query, setQuery]     = useState("");
   const [results, setResults] = useState([]);
@@ -620,7 +688,12 @@ function ClientSearchBox({companies, onSelect}){
     }, 300);
   };
 
-  const handleSelect = company => { setQuery(company.name); setOpen(false); onSelect(company); };
+  const handleSelect = company => {
+    setQuery(company.name);
+    setOpen(false);
+    onSelect(company);
+  };
+
   const handleClear = () => { setQuery(""); setResults([]); setOpen(false); };
 
   return (
@@ -633,17 +706,37 @@ function ClientSearchBox({companies, onSelect}){
         borderRadius:8, transition:"all 0.15s", width:220,
       }}>
         <span style={{fontSize:13, color:T.textSoft, flexShrink:0}}>⌕</span>
-        <input value={query} onChange={handleChange}
-          onFocus={()=>setFocused(true)} onBlur={()=>setFocused(false)}
+        <input
+          value={query}
+          onChange={handleChange}
+          onFocus={()=>setFocused(true)}
+          onBlur={()=>setFocused(false)}
           placeholder="Rechercher un client…"
-          style={{border:"none",outline:"none",background:"transparent",color:T.text,fontSize:12,fontFamily:"inherit",flex:1,width:"100%"}}/>
-        {query && <span onClick={handleClear} style={{cursor:"pointer",fontSize:13,color:T.textSoft,flexShrink:0,lineHeight:1}}>×</span>}
+          style={{
+            border:"none", outline:"none", background:"transparent",
+            color:T.text, fontSize:12, fontFamily:"inherit", flex:1, width:"100%"
+          }}
+        />
+        {query && (
+          <span onClick={handleClear}
+            style={{cursor:"pointer",fontSize:13,color:T.textSoft,flexShrink:0,lineHeight:1}}>×</span>
+        )}
       </div>
+
       {open && (
-        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,right:0,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 12px 32px rgba(0,0,0,0.12)",zIndex:500,overflow:"hidden"}}>
+        <div style={{
+          position:"absolute", top:"calc(100% + 6px)", left:0, right:0,
+          background:T.card, border:`1px solid ${T.border}`, borderRadius:10,
+          boxShadow:"0 12px 32px rgba(0,0,0,0.12)", zIndex:500, overflow:"hidden",
+        }}>
           {results.map((c,i) => (
             <div key={c.id} onMouseDown={()=>handleSelect(c)}
-              style={{padding:"9px 14px",cursor:"pointer",fontSize:12,color:T.text,fontWeight:500,borderBottom:i<results.length-1?`1px solid ${T.border}`:"none",background:T.card,transition:"background 0.1s"}}
+              style={{
+                padding:"9px 14px", cursor:"pointer", fontSize:12,
+                color:T.text, fontWeight:500,
+                borderBottom: i < results.length-1 ? `1px solid ${T.border}` : "none",
+                background:T.card, transition:"background 0.1s",
+              }}
               onMouseEnter={e=>e.currentTarget.style.background=T.indigoL}
               onMouseLeave={e=>e.currentTarget.style.background=T.card}>
               <span style={{fontWeight:700}}>{c.name}</span>
@@ -658,8 +751,8 @@ function ClientSearchBox({companies, onSelect}){
   );
 }
 
-// ─── HEADER ───────────────────────────────────────────────────────────────────
-function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, companies, onSelectClient, userName}){
+// ─── HEADER PARTAGÉ ───────────────────────────────────────────────────────────
+function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, companies, onSelectClient}){
   const navigate = useNavigate();
   const location = useLocation();
   const isClients   = location.pathname === "/ficheclient";
@@ -672,11 +765,15 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
     else { if(isClients || isContacts) navigate("/"); setTab(key); }
   };
 
-  const handleSelectClient = company => { onSelectClient(company); navigate("/ficheclient"); };
+  const handleSelectClient = company => {
+    onSelectClient(company);
+    navigate("/ficheclient");
+  };
 
   return (
     <div style={{borderBottom:`1px solid ${T.border}`,padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",background:T.card,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
       <div style={{display:"flex",alignItems:"center",gap:20}}>
+        {/* Logo */}
         <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>{navigate("/");setTab("devis");}}>
           <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.indigo},${T.teal})`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px ${T.indigo}44`}}>
             <span style={{fontSize:16,fontWeight:900,color:"#fff"}}>Q</span>
@@ -687,6 +784,7 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
           </div>
         </div>
 
+        {/* Nav tabs */}
         <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
           {[
             ["devis",       "📋 Devis"],
@@ -694,7 +792,10 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
             ["clients",     "🏢 Clients"],
             ["contacts",    "📇 Contacts"],
           ].map(([key,label])=>{
-            const active = key==="clients" ? isClients : key==="contacts" ? isContacts : (isDashboard && tab===key);
+            const active =
+              key==="clients"  ? isClients  :
+              key==="contacts" ? isContacts :
+              (isDashboard && tab===key);
             return (
               <button key={key} onClick={()=>handleNavClick(key)}
                 style={{cursor:"pointer",padding:"7px 20px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",
@@ -706,7 +807,10 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
           })}
         </div>
 
-        {companies.length > 0 && <ClientSearchBox companies={companies} onSelect={handleSelectClient}/>}
+        {/* Searchbox client */}
+        {companies.length > 0 && (
+          <ClientSearchBox companies={companies} onSelect={handleSelectClient}/>
+        )}
       </div>
 
       <div style={{display:"flex",alignItems:"center",gap:10}}>
@@ -716,7 +820,7 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
             <button onClick={onClearCompany} style={{cursor:"pointer",background:"none",border:"none",color:T.indigo,fontSize:15,lineHeight:1,padding:0}}>×</button>
           </div>
         )}
-        {userName && <span style={{fontSize:12,color:T.textMed,fontWeight:600}}>👤 {userName}</span>}
+        {USE_MOCK&&<span style={{fontSize:10,color:T.amber,padding:"3px 8px",border:`1px solid ${T.amber}44`,borderRadius:4,fontWeight:700}}>MOCK</span>}
         <span style={{fontSize:12,color:T.textSoft,fontWeight:500}}>{new Date().toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}</span>
         <button onClick={onLogout} style={{cursor:"pointer",padding:"6px 12px",borderRadius:7,border:`1px solid ${T.border}`,background:T.bg,color:T.textMed,fontSize:11,fontWeight:600,transition:"all 0.15s"}}
           onMouseEnter={e=>{e.target.style.borderColor=T.rose;e.target.style.color=T.rose;}}
@@ -730,43 +834,17 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
 
 // ─── APP ──────────────────────────────────────────────────────────────────────
 export default function QualidaDashboard(){
-  const [auth, setAuth]               = useState(()=> isAuthenticated());
+  const [auth, setAuth]               = useState(()=> sessionStorage.getItem("qd_auth")==="1");
   const [tab, setTab]                 = useState("devis");
   const [data, setData]               = useState(null);
   const [loading, setLoading]         = useState(true);
-  const [loadError, setLoadError]     = useState(null);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [activeClient, setActiveClient] = useState(null);
-  const currentUser = getUser();
 
-  // Auto-logout si le token expire
-  useEffect(()=>{
-    onSessionExpired(()=> setAuth(false));
-  },[]);
-
-  const handleLogin = () => setAuth(true);
-
-  const handleLogout = () => {
-    logout();
-    setAuth(false);
-    setData(null);
-  };
+  const handleLogout = () => { sessionStorage.removeItem("qd_auth"); setAuth(false); };
 
   useEffect(()=>{
-    if(!auth) return;
-    setLoading(true);
-    setLoadError(null);
-    fetchAll()
-      .then(d=>{ setData(d); setLoading(false); })
-      .catch(e=>{
-        console.error("Erreur chargement:", e);
-        if (e.message?.includes("Session expirée") || e.message?.includes("Non authentifié")) {
-          setAuth(false);
-        } else {
-          setLoadError(e.message);
-          setLoading(false);
-        }
-      });
+    if(auth) fetchAll().then(d=>{ setData(d); setLoading(false); });
   },[auth]);
 
   const allCompanies = useMemo(()=>{
@@ -785,7 +863,7 @@ export default function QualidaDashboard(){
     return allCompanies.find(c=>c?.id===selectedCompany)?.name;
   },[selectedCompany, allCompanies, data]);
 
-  if(!auth) return <Login onLogin={handleLogin}/>;
+  if(!auth) return <Login onLogin={()=>setAuth(true)}/>;
 
   if(loading) return (
     <div style={{background:T.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
@@ -796,21 +874,8 @@ export default function QualidaDashboard(){
         <div style={{fontSize:20,fontWeight:800,color:T.text,marginBottom:6}}>QUALIDAL</div>
         <div style={{fontSize:13,color:T.textSoft}}>Chargement des données…</div>
         <div style={{marginTop:16,width:160,height:4,background:T.border,borderRadius:2,margin:"16px auto 0"}}>
-          <div style={{height:4,background:`linear-gradient(90deg,${T.indigo},${T.teal})`,borderRadius:2,width:"70%",animation:"pulse 1.5s ease-in-out infinite"}}/>
+          <div style={{height:4,background:`linear-gradient(90deg,${T.indigo},${T.teal})`,borderRadius:2,width:"70%"}}/>
         </div>
-        <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}`}</style>
-      </div>
-    </div>
-  );
-
-  if(loadError) return (
-    <div style={{background:T.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Nunito','Segoe UI',sans-serif"}}>
-      <div style={{textAlign:"center",padding:32,background:T.card,borderRadius:14,border:`1px solid ${T.rose}33`,maxWidth:420}}>
-        <div style={{fontSize:32,marginBottom:12}}>⚠️</div>
-        <div style={{fontSize:14,color:T.rose,fontWeight:700,marginBottom:8}}>Erreur de chargement</div>
-        <div style={{fontSize:12,color:T.textSoft,marginBottom:16}}>{loadError}</div>
-        <button onClick={()=>window.location.reload()} style={{padding:"8px 18px",borderRadius:8,border:`1px solid ${T.border}`,background:T.card,color:T.textMed,fontSize:13,fontWeight:600,cursor:"pointer",marginRight:8}}>Réessayer</button>
-        <button onClick={handleLogout} style={{padding:"8px 18px",borderRadius:8,border:"none",background:T.rose,color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer"}}>Se déconnecter</button>
       </div>
     </div>
   );
@@ -833,7 +898,6 @@ export default function QualidaDashboard(){
         onLogout={handleLogout}
         companies={allCompanies}
         onSelectClient={c=>setActiveClient(c)}
-        userName={currentUser?.name}
       />
 
       <Routes>
@@ -854,7 +918,7 @@ export default function QualidaDashboard(){
       </Routes>
 
       <div style={{padding:"14px 28px",fontSize:11,color:T.textSoft,textAlign:"center",borderTop:`1px solid ${T.border}`,background:T.card,fontWeight:500}}>
-        Qualidal · CRM · Bubble Live · {currentUser?.email||""}
+        Qualidal · CRM · {USE_MOCK?"Données de démonstration":"Bubble Live"}
       </div>
     </div>
   );
