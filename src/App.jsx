@@ -102,68 +102,86 @@ function extractCity(a) {
 }
 
 async function fetchAll() {
-  const [rawOffers, rawProjects, rawInterventions, rawCompanies, rawItems, rawFactures] = await Promise.all([
-    fetchAllPages("offers_history_documents"), 
+  if (USE_MOCK) {
+    const cm=Object.fromEntries(MOCK_COMPANIES.map(c=>[c.id,c]));
+    const pm=Object.fromEntries(MOCK_PROJECTS.map(p=>[p.id,{...p,_company_attached:cm[p._company_attached]}]));
+    return {
+      offers: MOCK_OFFERS.map(o=>({...o,_project_attached:pm[o._project_attached]})),
+      interventions: MOCK_INTERVENTIONS.map(i=>({...i,_project_attached:pm[i._project_attached]})),
+      projects: Object.values(pm),
+    };
+  }
+  const [rawOffers,rawProjects,rawInterventions,rawCompanies,rawItems,rawFactures] = await Promise.all([
+    fetchAllPages("offers_history_documents"),
     fetchAllPages("projects"),
-    fetchAllPages("interventions"), 
-    fetchAllPages("companies"), 
+    fetchAllPages("interventions"),
+    fetchAllPages("companies"),
     fetchAllPages("items_devis"),
-    fetchAllPages("mois_facturable_projet") // On charge la table de facture
+    fetchAllPages("mois_facturable_projet") // 👈 Ajout
   ]);
-
-  const companiesMap = Object.fromEntries(rawCompanies.map(c => [c._id, c]));
+  const companiesMap=Object.fromEntries(rawCompanies.map(c=>[c._id,c]));
   
-  // 1. Calcul Devis & Prod
-  const numByProject = {}, denomByProject = {}, montantByOffer = {};
-  rawItems.forEach(item => {
-    const pid = item._project_attached, oid = item.offer_document_item;
-    const ht = item["Total HT"] || item.Total_HT || item.total_ht || 0;
-    const pi = item.prix_intervention || item["prix intervention"] || 0;
-    const isI = item["intervention?"] === true || item.intervention === true || item.is_intervention === true;
-    if (oid) montantByOffer[oid] = (montantByOffer[oid] || 0) + ht;
-    if (pid) { 
-        denomByProject[pid] = (denomByProject[pid] || 0) + ht; 
-        if(isI) numByProject[pid] = (numByProject[pid] || 0) + pi; 
-    }
+  const numByProject={}, denomByProject={}, montantByOffer={};
+  rawItems.forEach(item=>{
+    const pid=item._project_attached, oid=item.offer_document_item;
+    const ht=item["Total HT"]||item.Total_HT||item.total_ht||0;
+    const pi=item.prix_intervention||item["prix intervention"]||0;
+    const isI=item["intervention?"]===true||item.intervention===true||item.is_intervention===true;
+    if (oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
+    if (pid) { denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+pi; }
   });
 
-  // 2. Additionner les factures par projet
   const facturesByProject = {};
   rawFactures.forEach(f => {
-    // ⚠️ IMPORTANT: Vérifie que ton champ projet s'appelle bien "_project_attached" dans la table mois_facturable_projet, sinon modifie cette ligne :
     const pid = f._project_attached || f.Projet; 
     const montant = f.total_reel_facturable || 0;
     if (pid) facturesByProject[pid] = (facturesByProject[pid] || 0) + montant;
   });
 
-  // 3. Fabriquer l'objet Projet complet
-  const projectsMap = Object.fromEntries(rawProjects.map(p => {
-    const company = companiesMap[p._company_attached] || null;
-    return [p._id, {
-      id: p._id,
-      name: p.name || "Projet sans nom",
-      client_name: company?.name || "—",
-      // Chiffres envoyés à SuiviFacturable :
+  const projectsMap=Object.fromEntries(rawProjects.map(p=>{
+    const company=companiesMap[p._company_attached]||null;
+    const city=extractCity(p.chantier_address);
+    const num=numByProject[p._id]||0, denom=denomByProject[p._id]||0;
+    return [p._id,{
+      id:p._id, name:p.name||"", project_code:p.project_code||p._id,
+      _company_attached:company?{id:company._id,name:company.name}:{id:p._company_attached,name:"—"},
+      chantier_address:{city,state:city},
+      OS_prestations_type:p.OS_prestations_type||"",
+      OS_devis_status:p.OS_devis_status||"",
+      avancement:denom>0?Math.min(num/denom,1):0,
       total_ht: denomByProject[p._id] || 0,
       total_prod: numByProject[p._id] || 0,
       total_facture: facturesByProject[p._id] || 0,
-      // Dates envoyées à SuiviFacturable :
       date_debut: p.date_chantier,
       date_fin: p.date_fin_flexible,
     }];
   }));
 
-  const offers = rawOffers.filter(o => o._project_attached).map(o => { /* Ton code offers actuel */ 
+  const offers=rawOffers.filter(o=>o._project_attached).map(o=>{
     const project=projectsMap[o._project_attached]||null;
-    return { id:o._id, offer_number:o.devis_number||o._id, os_devis_statut:project?.OS_devis_status||"Saisie d'information", date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10), date_validite:o.date_validite?o.date_validite.slice(0,10):null, _project_attached:project, montant_ht:montantByOffer[o._id]||0, is_active:o.is_active!==false, };
+    return {
+      id:o._id, offer_number:o.devis_number||o._id,
+      os_devis_statut:project?.OS_devis_status||"Saisie d'information",
+      date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10),
+      date_validite:o.date_validite?o.date_validite.slice(0,10):null,
+      _project_attached:project,
+      montant_ht:montantByOffer[o._id]||0,
+      is_active:o.is_active!==false,
+    };
   });
   
-  const interventions = rawInterventions.map(i => { /* Ton code interventions actuel */ 
+  const interventions=rawInterventions.map(i=>{
     const project=projectsMap[i._project_attached]||null;
-    return { id:i._id, name:i.name||"Sans nom", _project_attached:project, date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10), OS_prestations_type:i.OS_prestations_type||"", intervention_status:i.intervention_status||i.OS_project_intervention_status||"—", address:{city:extractCity(i.address)||project?.chantier_address?.city||"—"}, };
+    return {
+      id:i._id, name:i.name||"Sans nom", _project_attached:project,
+      date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
+      OS_prestations_type:i.OS_prestations_type||"",
+      intervention_status:i.intervention_status||i.OS_project_intervention_status||"—",
+      address:{city:extractCity(i.address)||project?.chantier_address?.city||"—"},
+    };
   });
-
-  return { offers, interventions, projects: Object.values(projectsMap) };
+  
+  return {offers, interventions, projects:Object.values(projectsMap)};
 }
 
 // ─── THÈME PASTEL ─────────────────────────────────────────────────────────────
@@ -753,15 +771,16 @@ function ClientSearchBox({companies, onSelect}){
 }
 
 // ─── HEADER PARTAGÉ ───────────────────────────────────────────────────────────
+// ─── HEADER PARTAGÉ ───────────────────────────────────────────────────────────
 function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, companies, onSelectClient}){
   const navigate = useNavigate();
   const location = useLocation();
-  const isClients   = location.pathname === "/ficheclient";
-  const isContacts  = location.pathname === "/contacts";
+  const isClients = location.pathname === "/ficheclient";
+  const isContacts = location.pathname === "/contacts";
   const isDashboard = !isClients && !isContacts;
 
   const handleNavClick = key => {
-    if(key==="clients")  { navigate("/ficheclient"); }
+    if(key==="clients") { navigate("/ficheclient"); }
     else if(key==="contacts") { navigate("/contacts"); }
     else { if(isClients || isContacts) navigate("/"); setTab(key); }
   };
@@ -789,7 +808,7 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
         <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
           {[
             ["devis",       "📋 Devis"],
-            ["facturation", "💶 Facturation"],
+            ["facturation", "💶 Facturation"], /* 👈 NOUVEL ONGLET ICI */
             ["interventions","🔧 Interventions"],
             ["clients",     "🏢 Clients"],
             ["contacts",    "📇 Contacts"],
@@ -834,7 +853,7 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
   );
 }
 
-// ─── APP ──────────────────────────────────────────────────────────────────────
+// ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────────
 export default function QualidaDashboard(){
   const [auth, setAuth]               = useState(()=> sessionStorage.getItem("qd_auth")==="1");
   const [tab, setTab]                 = useState("devis");
@@ -906,10 +925,10 @@ export default function QualidaDashboard(){
         <Route path="/" element={
           <div style={{padding:"24px 28px",maxWidth:1440,margin:"0 auto"}}>
             {tab==="facturation"
-              ?<SuiviFacturable projects={data.projects} />
-              :tab==="devis"
-                ?<TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
-                :<TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+              ? <SuiviFacturable projects={data.projects} />
+              : tab==="devis"
+                ? <TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+                : <TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
             }
           </div>
         }/>
