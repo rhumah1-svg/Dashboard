@@ -46,13 +46,48 @@ const MOCK_COMPANIES = [
   { id:"c5", name:"EIFFAGE" },{ id:"c6", name:"SOGEA" },
 ];
 const MOCK_PROJECTS = [
-  { id:"p1", name:"AREFIM - REIMS (51)",       _company_attached:"c1", OS_prestations_type:"Dallage",          OS_devis_status:"Devis signé",         avancement:0.67 },
-  { id:"p2", name:"LOZENNES (59)",              _company_attached:"c2", OS_prestations_type:"Réparation béton", OS_devis_status:"Devis envoyé",         avancement:0.32 },
-  { id:"p3", name:"Chantier Paris 15",          _company_attached:"c3", OS_prestations_type:"Dallage",          OS_devis_status:"A relancer",           avancement:0.10 },
-  { id:"p4", name:"Parking Rouen",              _company_attached:"c4", OS_prestations_type:"Marquage sol",     OS_devis_status:"Saisie d'information", avancement:0    },
-  { id:"p5", name:"Zone artisanale Creil",      _company_attached:"c5", OS_prestations_type:"Dallage",          OS_devis_status:"Devis signé",          avancement:1.0  },
-  { id:"p6", name:"ZI Amiens Nord",             _company_attached:"c2", OS_prestations_type:"Réparation béton", OS_devis_status:"Relance envoyée",      avancement:0.48 },
-  { id:"p7", name:"Plateforme Marne-la-Vallée", _company_attached:"c6", OS_prestations_type:"Dallage",          OS_devis_status:"Chiffrage en cours",   avancement:0    },
+  { 
+    id:"p1", name:"AREFIM - REIMS (51)", _company_attached:"c1", 
+    OS_prestations_type:"Dallage", OS_devis_status:"Devis signé", avancement:0.67,
+    total_ht: 48200, total_prod: 32294, total_facture: 15000,
+    date_debut: "2025-01-01", date_fin: "2025-06-01"
+  },
+  { 
+    id:"p2", name:"LOZENNES (59)", _company_attached:"c2", 
+    OS_prestations_type:"Réparation béton", OS_devis_status:"Devis envoyé", avancement:0.32,
+    total_ht: 127500, total_prod: 40800, total_facture: 35000,
+    date_debut: "2024-11-15", date_fin: "2025-08-12"
+  },
+  { 
+    id:"p3", name:"Chantier Paris 15", _company_attached:"c3", 
+    OS_prestations_type:"Dallage", OS_devis_status:"A relancer", avancement:0.10,
+    total_ht: 33750, total_prod: 3375, total_facture: 0,
+    date_debut: "2025-03-01", date_fin: "2025-04-15"
+  },
+  { 
+    id:"p4", name:"Parking Rouen", _company_attached:"c4", 
+    OS_prestations_type:"Marquage sol", OS_devis_status:"Saisie d'information", avancement:0,
+    total_ht: 89000, total_prod: 0, total_facture: 0,
+    date_debut: "2024-12-01", date_fin: "2025-02-28"
+  },
+  { 
+    id:"p5", name:"Zone artisanale Creil", _company_attached:"c5", 
+    OS_prestations_type:"Dallage", OS_devis_status:"Devis signé", avancement:1.0,
+    total_ht: 310000, total_prod: 310000, total_facture: 280000,
+    date_debut: "2025-01-10", date_fin: "2025-03-30"
+  },
+  { 
+    id:"p6", name:"ZI Amiens Nord", _company_attached:"c2", 
+    OS_prestations_type:"Réparation béton", OS_devis_status:"Relance envoyée", avancement:0.48,
+    total_ht: 215000, total_prod: 103200, total_facture: 45000,
+    date_debut: "2024-12-15", date_fin: "2025-05-20"
+  },
+  { 
+    id:"p7", name:"Plateforme Marne-la-Vallée", _company_attached:"c6", 
+    OS_prestations_type:"Dallage", OS_devis_status:"Chiffrage en cours", avancement:0,
+    total_ht: 98500, total_prod: 0, total_facture: 0,
+    date_debut: "2025-02-01", date_fin: "2025-07-30"
+  },
 ];
 const MOCK_OFFERS = [
   { id:"o1",  offer_number:"devis_de00001898", os_devis_statut:"Devis envoyé",        date_offre:"2025-01-10", date_validite:"2025-06-20", _project_attached:"p1", montant_ht:48200,  is_active:true  },
@@ -80,6 +115,7 @@ const MOCK_INTERVENTIONS = [
   { id:"i11", name:"Joints souples",              _project_attached:"p5", date:"2025-02-01", OS_prestations_type:"Réparation béton", intervention_status:"En cours", address:{ city:"Creil"  } },
   { id:"i12", name:"Marquage allées",             _project_attached:"p2", date:"2025-03-15", OS_prestations_type:"Marquage sol",     intervention_status:"Planifié", address:{ city:"Lille"  } },
 ];
+
 
 // ─── FETCH ────────────────────────────────────────────────────────────────────
 async function fetchAllPages(endpoint) {
