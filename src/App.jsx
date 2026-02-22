@@ -789,6 +789,7 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
         <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
           {[
             ["devis",       "📋 Devis"],
+            ["facturation", "💶 Facturation"],
             ["interventions","🔧 Interventions"],
             ["clients",     "🏢 Clients"],
             ["contacts",    "📇 Contacts"],
@@ -904,9 +905,11 @@ export default function QualidaDashboard(){
       <Routes>
         <Route path="/" element={
           <div style={{padding:"24px 28px",maxWidth:1440,margin:"0 auto"}}>
-            {tab==="devis"
-              ?<TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
-              :<TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+            {tab==="facturation"
+              ?<SuiviFacturable projects={data.projects} />
+              :tab==="devis"
+                ?<TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+                :<TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
             }
           </div>
         }/>
