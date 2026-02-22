@@ -36,7 +36,7 @@ class ErrorBoundary extends Component {
 }
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const USE_MOCK = false;
+const USE_MOCK = true;
 const DASH_SECRET = "qd_x9k2m7p4nz3";
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
