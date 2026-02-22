@@ -75,59 +75,69 @@ function extractCity(a) {
 }
 
 async function fetchAll() {
-  const [rawOffers,rawProjects,rawInterventions,rawCompanies,rawItems] = await Promise.all([
-    fetchAllPages("offers_history_documents"),
+  const [rawOffers, rawProjects, rawInterventions, rawCompanies, rawItems, rawFactures] = await Promise.all([
+    fetchAllPages("offers_history_documents"), 
     fetchAllPages("projects"),
-    fetchAllPages("interventions"),
-    fetchAllPages("companies"),
+    fetchAllPages("interventions"), 
+    fetchAllPages("companies"), 
     fetchAllPages("items_devis"),
+    fetchAllPages("mois_facturable_projet") // 👈 Ajout de la table des factures
   ]);
-  const companiesMap=Object.fromEntries(rawCompanies.map(c=>[c._id,c]));
-  const numByProject={}, denomByProject={}, montantByOffer={};
-  rawItems.forEach(item=>{
-    const pid=item._project_attached, oid=item.offer_document_item;
-    const ht=item["Total HT"]||item.Total_HT||item.total_ht||0;
-    const pi=item.prix_intervention||item["prix intervention"]||0;
-    const isI=item["intervention?"]===true||item.intervention===true||item.is_intervention===true;
-    if (oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
-    if (pid) { denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+pi; }
+
+  const companiesMap = Object.fromEntries(rawCompanies.map(c => [c._id, c]));
+  
+  // 1. Calcul Devis & Prod
+  const numByProject = {}, denomByProject = {}, montantByOffer = {};
+  rawItems.forEach(item => {
+    const pid = item._project_attached, oid = item.offer_document_item;
+    const ht = item["Total HT"] || item.Total_HT || item.total_ht || 0;
+    const pi = item.prix_intervention || item["prix intervention"] || 0;
+    const isI = item["intervention?"] === true || item.intervention === true || item.is_intervention === true;
+    if (oid) montantByOffer[oid] = (montantByOffer[oid] || 0) + ht;
+    if (pid) { 
+        denomByProject[pid] = (denomByProject[pid] || 0) + ht; 
+        if(isI) numByProject[pid] = (numByProject[pid] || 0) + pi; 
+    }
   });
-  const projectsMap=Object.fromEntries(rawProjects.map(p=>{
-    const company=companiesMap[p._company_attached]||null;
-    const city=extractCity(p.chantier_address);
-    const num=numByProject[p._id]||0, denom=denomByProject[p._id]||0;
-    return [p._id,{
-      id:p._id, name:p.name||"", project_code:p.project_code||p._id,
-      _company_attached:company?{id:company._id,name:company.name}:{id:p._company_attached,name:"—"},
-      chantier_address:{city,state:city},
-      OS_prestations_type:p.OS_prestations_type||"",
-      OS_devis_status:p.OS_devis_status||"",
-      avancement:denom>0?Math.min(num/denom,1):0,
+
+  // 2. Additionner les factures par projet
+  const facturesByProject = {};
+  rawFactures.forEach(f => {
+    // ⚠️ Si le champ dans Bubble s'appelle autrement que _project_attached, modifie ici :
+    const pid = f._project_attached || f.Projet; 
+    const montant = f.total_reel_facturable || 0;
+    if (pid) facturesByProject[pid] = (facturesByProject[pid] || 0) + montant;
+  });
+
+  // 3. Fabriquer l'objet Projet complet
+  const projectsMap = Object.fromEntries(rawProjects.map(p => {
+    const company = companiesMap[p._company_attached] || null;
+    return [p._id, {
+      id: p._id,
+      name: p.name || "Projet sans nom",
+      client_name: company?.name || "—",
+      // Chiffres envoyés au composant de facturation :
+      total_ht: denomByProject[p._id] || 0,
+      total_prod: numByProject[p._id] || 0,
+      total_facture: facturesByProject[p._id] || 0,
+      // Dates de Bubble envoyées au composant :
+      date_debut: p.date_chantier,
+      date_fin: p.date_fin_flexible,
     }];
   }));
-  const offers=rawOffers.filter(o=>o._project_attached).map(o=>{
-    const project=projectsMap[o._project_attached]||null;
-    return {
-      id:o._id, offer_number:o.devis_number||o._id,
-      os_devis_statut:project?.OS_devis_status||"Saisie d'information",
-      date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10),
-      date_validite:o.date_validite?o.date_validite.slice(0,10):null,
-      _project_attached:project,
-      montant_ht:montantByOffer[o._id]||0,
-      is_active:o.is_active!==false,
-    };
+
+  // Le reste reste identique
+  const offers = rawOffers.filter(o => o._project_attached).map(o => { 
+    const project = projectsMap[o._project_attached] || null;
+    return { id:o._id, offer_number:o.devis_number||o._id, os_devis_statut:project?.OS_devis_status||"Saisie d'information", date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10), date_validite:o.date_validite?o.date_validite.slice(0,10):null, _project_attached:project, montant_ht:montantByOffer[o._id]||0, is_active:o.is_active!==false };
   });
-  const interventions=rawInterventions.map(i=>{
-    const project=projectsMap[i._project_attached]||null;
-    return {
-      id:i._id, name:i.name||"Sans nom", _project_attached:project,
-      date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
-      OS_prestations_type:i.OS_prestations_type||"",
-      intervention_status:i.intervention_status||i.OS_project_intervention_status||"—",
-      address:{city:extractCity(i.address)||project?.chantier_address?.city||"—"},
-    };
+  
+  const interventions = rawInterventions.map(i => {  
+    const project = projectsMap[i._project_attached] || null;
+    return { id:i._id, name:i.name||"Sans nom", _project_attached:project, date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10), OS_prestations_type:i.OS_prestations_type||"", intervention_status:i.intervention_status||i.OS_project_intervention_status||"—", address:{city:extractCity(i.address)||project?.chantier_address?.city||"—"} };
   });
-  return {offers, interventions, projects:Object.values(projectsMap)};
+
+  return { offers, interventions, projects: Object.values(projectsMap) };
 }
 
 // ─── UI COMPONENTS ────────────────────────────────────────────────────────────
