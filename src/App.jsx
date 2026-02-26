@@ -127,10 +127,9 @@ async function fetchAll() {
   rawItems.forEach(item=>{
     const pid=item._project_attached, oid=item.offer_document_item;
     const ht=item["Total HT"]||item.Total_HT||item.total_ht||0;
-    const pi=item.prix_intervention||item["prix intervention"]||0;
     const isI=item["intervention?"]===true||item.intervention===true||item.is_intervention===true;
     if (oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
-    if (pid) { denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+pi; }
+    if (pid) { denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+ht; }
   });
 
   const facturesByProject = {};
@@ -156,6 +155,7 @@ async function fetchAll() {
       total_facture: facturesByProject[p._id] || 0,
       date_debut: p.date_chantier,
       date_fin: p.date_fin_flexible,
+      is_archived: p.is_archived===true,
     }];
   }));
 
@@ -333,7 +333,7 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
   const [periodTo,setPeriodTo]=useState("");
   const [search,setSearch]=useState("");
   const [filterStatuts,setFilterStatuts]=useState([]);
-  const [dateFrom,setDateFrom]=useState("2025-02-20"); // ← était ""
+  const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
   const [sortBy,setSortBy]=useState("date_offre");
   const [sortDir,setSortDir]=useState("desc");
@@ -551,7 +551,7 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
   const [search,setSearch]=useState("");
   const [filterStatuts,setFilterStatuts]=useState([]);
   const [filterTypes,setFilterTypes]=useState([]);
-  const [dateFrom,setDateFrom]=useState("2025-02-20"); // ← était ""
+  const [dateFrom,setDateFrom]=useState("");
   const [dateTo,setDateTo]=useState("");
   const [sortBy,setSortBy]=useState("date");
   const [sortDir,setSortDir]=useState("desc");
