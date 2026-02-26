@@ -380,12 +380,13 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
   const [dateTo,setDateTo]=useState("");
   const [sortBy,setSortBy]=useState("date_offre");
   const [sortDir,setSortDir]=useState("desc");
+  const [showArchived,setShowArchived]=useState(false); // 👈 ICI
   const handleSort=k=>{if(sortBy===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortBy(k);setSortDir("desc");}};
 
   const offersInPeriod=useMemo(()=>offers.filter(o=>inRange(o.date_offre,periodFrom,periodTo)),[offers,periodFrom,periodTo]);
 
   const filtered=useMemo(()=>{
-    let rows=offers;
+    let rows=offers.filter(o=>showArchived ? true : !o.is_archived); // 👈 AJOUTER CETTE LIGNE
     if(search.trim()){const q=search.toLowerCase();rows=rows.filter(o=>o._project_attached?.name?.toLowerCase().includes(q)||o._project_attached?._company_attached?.name?.toLowerCase().includes(q)||o.offer_number?.toLowerCase().includes(q));}
     if(filterStatuts.length)rows=rows.filter(o=>filterStatuts.includes(o.os_devis_statut));
     if(dateFrom)rows=rows.filter(o=>o.date_offre&&o.date_offre>=dateFrom);
@@ -404,20 +405,29 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
   },[offers,search,filterStatuts,dateFrom,dateTo,selectedCompany,sortBy,sortDir]);
 
   const active=offersInPeriod.filter(o=>o.is_active);
-  const signe=active.filter(o=>STATUTS_SIGNES.includes(o.os_devis_statut));
-  const pipeline=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut));
-  const caSigne=signe.reduce((s,o)=>s+(o.montant_ht||0),0);
-  const caPipeline=pipeline.reduce((s,o)=>s+(o.montant_ht||0),0);
-  const tauxConv=active.length?Math.round((signe.length/active.length)*100):0;
-  const expirent=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut))
-    .map(o=>({...o,daysLeft:diffDays(o.date_validite)}))
-    .filter(o=>o.daysLeft!==null&&o.daysLeft<=7).sort((a,b)=>a.daysLeft-b.daysLeft);
-  const totalFiltre=filtered.reduce((s,o)=>s+(o.montant_ht||0),0);
+const signe=active.filter(o=>STATUTS_SIGNES.includes(o.os_devis_statut));
+const pipeline=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut));
+const caSigne=signe.reduce((s,o)=>s+(o.montant_ht||0),0);
+const caPipeline=pipeline.reduce((s,o)=>s+(o.montant_ht||0),0);
 
-  const byClient={};
-  active.forEach(o=>{const c=o._project_attached?._company_attached;if(!c)return;if(!byClient[c.id])byClient[c.id]={id:c.id,name:c.name,montant:0,count:0};byClient[c.id].montant+=o.montant_ht||0;byClient[c.id].count++;});
-  const topClients=Object.values(byClient).sort((a,b)=>b.montant-a.montant).slice(0,6);
-  const maxClient=topClients[0]?.montant||1;
+// Taux de conversion : Signés+Terminés / TOUS (car on peut passer Saisie → Terminé directement)
+const dansLaCourse=active.filter(o=>o.os_devis_statut!=="Classé sans suite"&&o.os_devis_statut!=="Non formalisé");
+const tauxConv=dansLaCourse.length?Math.round((signe.length/dansLaCourse.length)*100):0;
+
+const expirent=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut))
+  .map(o=>({...o,daysLeft:diffDays(o.date_validite)}))
+  .filter(o=>o.daysLeft!==null&&o.daysLeft<=7).sort((a,b)=>a.daysLeft-b.daysLeft);
+const totalFiltre=filtered.reduce((s,o)=>s+(o.montant_ht||0),0);
+
+// Synthèse statuts actifs (hors Classé sans suite & Non formalisé) — remplace topClients
+const STATUTS_ACTIFS=["Saisie d'information","Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée","Devis signé","Projet terminé"];
+const byStatutActif=STATUTS_ACTIFS.map(s=>({
+  s,
+  count:offersInPeriod.filter(o=>o.os_devis_statut===s).length,
+  montant:offersInPeriod.filter(o=>o.os_devis_statut===s).reduce((sum,o)=>sum+(o.montant_ht||0),0),
+  color:S_COLOR[s]||T.textSoft,
+  isActive:filterStatuts.includes(s),
+})).filter(d=>d.count>0);
 
   const byStatut=STATUT_DEVIS.map(s=>({
     s:s.length>13?s.slice(0,13)+"…":s,full:s,
@@ -455,33 +465,48 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
           </ResponsiveContainer>
         </Card>
 
-        <Card title="Top clients" badge={<PeriodTag on={hasPeriod}/>}>
-          {topClients.map((c,i)=>(
-            <div key={c.id} style={{marginBottom:10,cursor:"pointer"}} onClick={()=>onSelectCompany(selectedCompany===c.id?null:c.id)}>
-              <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:4}}>
-                <span style={{color:selectedCompany===c.id?T.indigo:T.text,fontWeight:selectedCompany===c.id?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:170}}>{c.name}</span>
-                <span style={{color:T.textSoft,flexShrink:0,marginLeft:6}}>{fmtK(c.montant)} · {c.count}</span>
-              </div>
-              <div style={{height:5,background:T.border,borderRadius:3}}>
-                <div style={{height:5,background:selectedCompany===c.id?T.indigo:i===0?T.teal:T.border,width:`${(c.montant/maxClient)*100}%`,borderRadius:3,transition:"all 0.4s"}}/>
-              </div>
-            </div>
-          ))}
-          {expirent.length>0&&(
-            <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`}}>
-              <div style={{fontSize:11,color:T.rose,fontWeight:700,textTransform:"uppercase",marginBottom:8}}>⚠ Expirations urgentes</div>
-              {expirent.slice(0,4).map(o=>{
-                const d=o.daysLeft;const col=d<=0?T.rose:d<=2?T.amber:T.amber;
-                return (
-                  <div key={o.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.border}`}}>
-                    <div style={{fontSize:11,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{o._project_attached?._company_attached?.name} — {o._project_attached?.name}</div>
-                    <div style={{fontSize:12,fontWeight:700,color:col,flexShrink:0}}>{d<=0?"Expiré":`J-${d}`}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
+        <Card title="Synthèse par statut" badge={<PeriodTag on={hasPeriod}/>}>
+  <div style={{display:"flex",flexDirection:"column",gap:6}}>
+    {byStatutActif.length===0
+      ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucun devis dans la période</div>
+      :byStatutActif.map(d=>(
+        <div key={d.s}
+          onClick={()=>setFilterStatuts(prev=>prev.includes(d.s)?prev.filter(x=>x!==d.s):[...prev,d.s])}
+          style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,cursor:"pointer",
+            background:filterStatuts.includes(d.s)?`${d.color}15`:T.cardAlt,
+            border:`1.5px solid ${filterStatuts.includes(d.s)?d.color:T.border}`,
+            transition:"all 0.15s"}}
+          onMouseEnter={e=>e.currentTarget.style.background=`${d.color}10`}
+          onMouseLeave={e=>e.currentTarget.style.background=filterStatuts.includes(d.s)?`${d.color}15`:T.cardAlt}>
+          <div style={{width:9,height:9,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+          <span style={{flex:1,fontSize:12,color:T.text,fontWeight:filterStatuts.includes(d.s)?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.s}</span>
+          <span style={{fontSize:12,fontWeight:700,color:d.color,flexShrink:0}}>{d.count}</span>
+          <span style={{fontSize:11,color:T.textSoft,flexShrink:0,minWidth:60,textAlign:"right"}}>{d.montant>0?fmtK(d.montant):"—"}</span>
+        </div>
+      ))
+    }
+  </div>
+  {filterStatuts.length>0&&(
+    <button onClick={()=>setFilterStatuts([])}
+      style={{marginTop:10,width:"100%",padding:"6px 0",fontSize:11,color:T.rose,background:T.roseL,border:`1px solid ${T.rose}30`,borderRadius:7,cursor:"pointer",fontWeight:600}}>
+      ✕ Réinitialiser les filtres
+    </button>
+  )}
+  {expirent.length>0&&(
+    <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`}}>
+      <div style={{fontSize:11,color:T.rose,fontWeight:700,textTransform:"uppercase",marginBottom:8}}>⚠ Expirations urgentes</div>
+      {expirent.slice(0,4).map(o=>{
+        const d=o.daysLeft;const col=d<=0?T.rose:T.amber;
+        return(
+          <div key={o.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.border}`}}>
+            <div style={{fontSize:11,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{o._project_attached?._company_attached?.name} — {o._project_attached?.name}</div>
+            <div style={{fontSize:12,fontWeight:700,color:col,flexShrink:0}}>{d<=0?"Expiré":`J-${d}`}</div>
+          </div>
+        );
+      })}
+    </div>
+  )}
+</Card>
       </div>
 
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
