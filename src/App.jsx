@@ -333,7 +333,7 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
   const [periodTo,setPeriodTo]=useState("");
   const [search,setSearch]=useState("");
   const [filterStatuts,setFilterStatuts]=useState([]);
-  const [dateFrom,setDateFrom]=useState("");
+  const [dateFrom,setDateFrom]=useState("2025-02-20"); // ← était ""
   const [dateTo,setDateTo]=useState("");
   const [sortBy,setSortBy]=useState("date_offre");
   const [sortDir,setSortDir]=useState("desc");
@@ -551,7 +551,7 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
   const [search,setSearch]=useState("");
   const [filterStatuts,setFilterStatuts]=useState([]);
   const [filterTypes,setFilterTypes]=useState([]);
-  const [dateFrom,setDateFrom]=useState("");
+  const [dateFrom,setDateFrom]=useState("2025-02-20"); // ← était ""
   const [dateTo,setDateTo]=useState("");
   const [sortBy,setSortBy]=useState("date");
   const [sortDir,setSortDir]=useState("desc");
