@@ -120,12 +120,15 @@ const MOCK_INTERVENTIONS = [
 // ─── FETCH ────────────────────────────────────────────────────────────────────
 async function fetchAllPages(endpoint) {
   let results=[], cursor=0;
+  const token = sessionStorage.getItem("qd_token"); // 👈 token stocké au login
   while (true) {
-    const res  = await fetch(`/api/bubble?table=${endpoint}&cursor=${cursor}&secret=${DASH_SECRET}`);
+    const res = await fetch(`/api/bubble?table=${endpoint}&cursor=${cursor}`, {
+      headers: { Authorization: `Bearer ${token}` }  // 👈 header au lieu de ?secret=
+    });
     const data = await res.json();
-    const page = data.response?.results||[];
+    const page = data.response?.results || [];
     results = results.concat(page);
-    if ((data.response?.remaining??0)===0) break;
+    if ((data.response?.remaining ?? 0) === 0) break;
     cursor += page.length;
   }
   return results;
