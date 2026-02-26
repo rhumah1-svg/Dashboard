@@ -7,7 +7,6 @@ import TableContacts from './TableContacts';
 import SuiviFacturable from './SuiviFacturable';
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
-// Capture les crashes React et affiche l'erreur exacte au lieu d'un écran blanc
 class ErrorBoundary extends Component {
   constructor(props){ super(props); this.state={error:null}; }
   static getDerivedStateFromError(e){ return {error:e}; }
@@ -46,60 +45,25 @@ const MOCK_COMPANIES = [
   { id:"c5", name:"EIFFAGE" },{ id:"c6", name:"SOGEA" },
 ];
 const MOCK_PROJECTS = [
-  { 
-    id:"p1", name:"AREFIM - REIMS (51)", _company_attached:"c1", 
-    OS_prestations_type:"Dallage", OS_devis_status:"Devis signé", avancement:0.67,
-    total_ht: 48200, total_prod: 32294, total_facture: 15000,
-    date_debut: "2025-01-01", date_fin: "2025-06-01"
-  },
-  { 
-    id:"p2", name:"LOZENNES (59)", _company_attached:"c2", 
-    OS_prestations_type:"Réparation béton", OS_devis_status:"Devis envoyé", avancement:0.32,
-    total_ht: 127500, total_prod: 40800, total_facture: 35000,
-    date_debut: "2024-11-15", date_fin: "2025-08-12"
-  },
-  { 
-    id:"p3", name:"Chantier Paris 15", _company_attached:"c3", 
-    OS_prestations_type:"Dallage", OS_devis_status:"A relancer", avancement:0.10,
-    total_ht: 33750, total_prod: 3375, total_facture: 0,
-    date_debut: "2025-03-01", date_fin: "2025-04-15"
-  },
-  { 
-    id:"p4", name:"Parking Rouen", _company_attached:"c4", 
-    OS_prestations_type:"Marquage sol", OS_devis_status:"Saisie d'information", avancement:0,
-    total_ht: 89000, total_prod: 0, total_facture: 0,
-    date_debut: "2024-12-01", date_fin: "2025-02-28"
-  },
-  { 
-    id:"p5", name:"Zone artisanale Creil", _company_attached:"c5", 
-    OS_prestations_type:"Dallage", OS_devis_status:"Devis signé", avancement:1.0,
-    total_ht: 310000, total_prod: 310000, total_facture: 280000,
-    date_debut: "2025-01-10", date_fin: "2025-03-30"
-  },
-  { 
-    id:"p6", name:"ZI Amiens Nord", _company_attached:"c2", 
-    OS_prestations_type:"Réparation béton", OS_devis_status:"Relance envoyée", avancement:0.48,
-    total_ht: 215000, total_prod: 103200, total_facture: 45000,
-    date_debut: "2024-12-15", date_fin: "2025-05-20"
-  },
-  { 
-    id:"p7", name:"Plateforme Marne-la-Vallée", _company_attached:"c6", 
-    OS_prestations_type:"Dallage", OS_devis_status:"Chiffrage en cours", avancement:0,
-    total_ht: 98500, total_prod: 0, total_facture: 0,
-    date_debut: "2025-02-01", date_fin: "2025-07-30"
-  },
+  { id:"p1", name:"AREFIM - REIMS (51)", _company_attached:"c1", OS_prestations_type:"Dallage", OS_devis_status:"Devis signé", avancement:0.67, total_ht:48200, total_prod:32294, total_facture:15000, date_debut:"2025-01-01", date_fin:"2025-06-01" },
+  { id:"p2", name:"LOZENNES (59)", _company_attached:"c2", OS_prestations_type:"Réparation béton", OS_devis_status:"Devis envoyé", avancement:0.32, total_ht:127500, total_prod:40800, total_facture:35000, date_debut:"2024-11-15", date_fin:"2025-08-12" },
+  { id:"p3", name:"Chantier Paris 15", _company_attached:"c3", OS_prestations_type:"Dallage", OS_devis_status:"A relancer", avancement:0.10, total_ht:33750, total_prod:3375, total_facture:0, date_debut:"2025-03-01", date_fin:"2025-04-15" },
+  { id:"p4", name:"Parking Rouen", _company_attached:"c4", OS_prestations_type:"Marquage sol", OS_devis_status:"Saisie d'information", avancement:0, total_ht:89000, total_prod:0, total_facture:0, date_debut:"2024-12-01", date_fin:"2025-02-28" },
+  { id:"p5", name:"Zone artisanale Creil", _company_attached:"c5", OS_prestations_type:"Dallage", OS_devis_status:"Devis signé", avancement:1.0, total_ht:310000, total_prod:310000, total_facture:280000, date_debut:"2025-01-10", date_fin:"2025-03-30" },
+  { id:"p6", name:"ZI Amiens Nord", _company_attached:"c2", OS_prestations_type:"Réparation béton", OS_devis_status:"Relance envoyée", avancement:0.48, total_ht:215000, total_prod:103200, total_facture:45000, date_debut:"2024-12-15", date_fin:"2025-05-20" },
+  { id:"p7", name:"Plateforme Marne-la-Vallée", _company_attached:"c6", OS_prestations_type:"Dallage", OS_devis_status:"Chiffrage en cours", avancement:0, total_ht:98500, total_prod:0, total_facture:0, date_debut:"2025-02-01", date_fin:"2025-07-30" },
 ];
 const MOCK_OFFERS = [
-  { id:"o1",  offer_number:"devis_de00001898", os_devis_statut:"Devis envoyé",        date_offre:"2025-01-10", date_validite:"2025-06-20", _project_attached:"p1", montant_ht:48200,  is_active:true  },
-  { id:"o2",  offer_number:"devis_de00001901", os_devis_statut:"Devis signé",          date_offre:"2025-01-05", date_validite:"2025-07-28", _project_attached:"p2", montant_ht:127500, is_active:true  },
-  { id:"o3",  offer_number:"devis_de00001905", os_devis_statut:"Devis envoyé",         date_offre:"2025-03-20", date_validite:"2025-06-19", _project_attached:"p3", montant_ht:33750,  is_active:true  },
-  { id:"o4",  offer_number:"devis_de00001910", os_devis_statut:"A relancer",           date_offre:"2024-12-15", date_validite:"2025-06-21", _project_attached:"p4", montant_ht:89000,  is_active:true  },
-  { id:"o5",  offer_number:"devis_de00001912", os_devis_statut:"Classé sans suite",    date_offre:"2024-12-01", date_validite:"2025-01-15", _project_attached:"p1", montant_ht:22000,  is_active:false },
-  { id:"o6",  offer_number:"devis_de00001915", os_devis_statut:"Devis signé",          date_offre:"2025-02-12", date_validite:"2025-08-15", _project_attached:"p6", montant_ht:215000, is_active:true  },
-  { id:"o7",  offer_number:"devis_de00001918", os_devis_statut:"Devis envoyé",         date_offre:"2025-01-25", date_validite:"2025-06-25", _project_attached:"p3", montant_ht:67300,  is_active:true  },
-  { id:"o8",  offer_number:"devis_de00001920", os_devis_statut:"Relance envoyée",      date_offre:"2025-01-08", date_validite:"2025-06-22", _project_attached:"p4", montant_ht:156000, is_active:true  },
-  { id:"o9",  offer_number:"devis_de00001922", os_devis_statut:"Saisie d'information", date_offre:"2025-02-01", date_validite:"2025-07-20", _project_attached:"p7", montant_ht:98500,  is_active:true  },
-  { id:"o10", offer_number:"devis_de00001925", os_devis_statut:"Devis signé",          date_offre:"2025-02-18", date_validite:"2025-08-01", _project_attached:"p5", montant_ht:310000, is_active:true  },
+  { id:"o1",  offer_number:"devis_de00001898", os_devis_statut:"Devis envoyé",         date_offre:"2025-01-10", date_validite:"2025-06-20", _project_attached:"p1", montant_ht:48200,  is_active:true,  is_archived:false },
+  { id:"o2",  offer_number:"devis_de00001901", os_devis_statut:"Devis signé",           date_offre:"2025-01-05", date_validite:"2025-07-28", _project_attached:"p2", montant_ht:127500, is_active:true,  is_archived:false },
+  { id:"o3",  offer_number:"devis_de00001905", os_devis_statut:"Devis envoyé",          date_offre:"2025-03-20", date_validite:"2025-06-19", _project_attached:"p3", montant_ht:33750,  is_active:true,  is_archived:false },
+  { id:"o4",  offer_number:"devis_de00001910", os_devis_statut:"A relancer",            date_offre:"2024-12-15", date_validite:"2025-06-21", _project_attached:"p4", montant_ht:89000,  is_active:true,  is_archived:false },
+  { id:"o5",  offer_number:"devis_de00001912", os_devis_statut:"Classé sans suite",     date_offre:"2024-12-01", date_validite:"2025-01-15", _project_attached:"p1", montant_ht:22000,  is_active:false, is_archived:true  },
+  { id:"o6",  offer_number:"devis_de00001915", os_devis_statut:"Devis signé",           date_offre:"2025-02-12", date_validite:"2025-08-15", _project_attached:"p6", montant_ht:215000, is_active:true,  is_archived:false },
+  { id:"o7",  offer_number:"devis_de00001918", os_devis_statut:"Devis envoyé",          date_offre:"2025-01-25", date_validite:"2025-06-25", _project_attached:"p3", montant_ht:67300,  is_active:true,  is_archived:false },
+  { id:"o8",  offer_number:"devis_de00001920", os_devis_statut:"Relance envoyée",       date_offre:"2025-01-08", date_validite:"2025-06-22", _project_attached:"p4", montant_ht:156000, is_active:true,  is_archived:false },
+  { id:"o9",  offer_number:"devis_de00001922", os_devis_statut:"Saisie d'information",  date_offre:"2025-02-01", date_validite:"2025-07-20", _project_attached:"p7", montant_ht:98500,  is_active:true,  is_archived:false },
+  { id:"o10", offer_number:"devis_de00001925", os_devis_statut:"Devis signé",           date_offre:"2025-02-18", date_validite:"2025-08-01", _project_attached:"p5", montant_ht:310000, is_active:true,  is_archived:false },
 ];
 const MOCK_INTERVENTIONS = [
   { id:"i1",  name:"Reprise fissures dalle",     _project_attached:"p1", date:"2025-01-15", OS_prestations_type:"Réparation béton", intervention_status:"Terminé",  address:{ city:"Reims"  } },
@@ -116,14 +80,13 @@ const MOCK_INTERVENTIONS = [
   { id:"i12", name:"Marquage allées",             _project_attached:"p2", date:"2025-03-15", OS_prestations_type:"Marquage sol",     intervention_status:"Planifié", address:{ city:"Lille"  } },
 ];
 
-
 // ─── FETCH ────────────────────────────────────────────────────────────────────
 async function fetchAllPages(endpoint) {
   let results=[], cursor=0;
-  const token = sessionStorage.getItem("qd_token"); // 👈 token stocké au login
+  const token = sessionStorage.getItem("qd_token");
   while (true) {
     const res = await fetch(`/api/bubble?table=${endpoint}&cursor=${cursor}`, {
-      headers: { Authorization: `Bearer ${token}` }  // 👈 header au lieu de ?secret=
+      headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
     const page = data.response?.results || [];
@@ -156,10 +119,10 @@ async function fetchAll() {
     fetchAllPages("interventions"),
     fetchAllPages("companies"),
     fetchAllPages("items_devis"),
-    fetchAllPages("mois_facturable_projet") // 👈 Ajout
+    fetchAllPages("mois_facturable_projet"),
   ]);
   const companiesMap=Object.fromEntries(rawCompanies.map(c=>[c._id,c]));
-  
+
   const numByProject={}, denomByProject={}, montantByOffer={};
   rawItems.forEach(item=>{
     const pid=item._project_attached, oid=item.offer_document_item;
@@ -172,7 +135,7 @@ async function fetchAll() {
 
   const facturesByProject = {};
   rawFactures.forEach(f => {
-    const pid = f._project_attached || f.Projet; 
+    const pid = f._project_attached || f.Projet;
     const montant = f.total_reel_facturable || 0;
     if (pid) facturesByProject[pid] = (facturesByProject[pid] || 0) + montant;
   });
@@ -199,16 +162,17 @@ async function fetchAll() {
   const offers=rawOffers.filter(o=>o._project_attached).map(o=>{
     const project=projectsMap[o._project_attached]||null;
     return {
-      id:o._id, offer_number:o.devis_number||o._id,
+      id:o._id, offer_number:o.devis_number||o.offer_number||o._id,
       os_devis_statut:project?.OS_devis_status||"Saisie d'information",
       date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10),
       date_validite:o.date_validite?o.date_validite.slice(0,10):null,
       _project_attached:project,
       montant_ht:montantByOffer[o._id]||0,
       is_active:o.is_active!==false,
+      is_archived:o.is_archived===true,
     };
   });
-  
+
   const interventions=rawInterventions.map(i=>{
     const project=projectsMap[i._project_attached]||null;
     return {
@@ -219,11 +183,11 @@ async function fetchAll() {
       address:{city:extractCity(i.address)||project?.chantier_address?.city||"—"},
     };
   });
-  
+
   return {offers, interventions, projects:Object.values(projectsMap)};
 }
 
-// ─── THÈME PASTEL ─────────────────────────────────────────────────────────────
+// ─── THÈME ────────────────────────────────────────────────────────────────────
 const T = {
   bg:"#F2F5F9", card:"#FFFFFF", cardAlt:"#F8FAFC",
   border:"#E3E9F2", borderMd:"#C8D4E3",
@@ -242,6 +206,9 @@ const STATUT_DEVIS=["Saisie d'information","Chiffrage en cours","Validé par l'a
 const STATUT_INTERV=["Planifié","En cours","Terminé","Annulé"];
 const STATUTS_SIGNES=["Devis signé","Projet terminé"];
 const STATUTS_PIPELINE=["Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée"];
+// Statuts affichés dans la synthèse (hors Classé sans suite & Non formalisé)
+const STATUTS_ACTIFS_SYNTHESE=["Saisie d'information","Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée","Devis signé","Projet terminé"];
+
 const S_COLOR={
   "Saisie d'information":T.textSoft,"Chiffrage en cours":T.sky,"Validé par l'administration":T.violet,
   "Devis envoyé":T.indigo,"Devis signé":T.sage,"Projet terminé":"#2E7A4E",
@@ -250,91 +217,81 @@ const S_COLOR={
 };
 const CHART_COLORS=[T.indigo,T.teal,T.sage,T.amber,T.rose,T.violet,T.sky,T.coral,"#7BAA4E"];
 const fmt     =n=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
-const fmtK    =n=>n>=1000?`${(n/1000).toFixed(0)}k€`:`${n}€`;
+const fmtK    =n=>n>=1000000?`${(n/1000000).toFixed(1)}M€`:n>=1000?`${Math.round(n/1000)}k€`:`${n}€`;
 const fmtDate =d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
-const mLabel  =d=>new Date(d).toLocaleDateString("fr-FR",{month:"short",year:"2-digit"});
 const diffDays=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
-const inRange =(ds,f,t)=>{if(!ds)return true;if(f&&ds<f)return false;if(t&&ds>t)return false;return true;};
+const inRange =(d,from,to)=>{if(!from&&!to)return true;if(from&&d<from)return false;if(to&&d>to)return false;return true;};
 
-// ─── UI ───────────────────────────────────────────────────────────────────────
-function Badge({label}){
-  const c=S_COLOR[label]||T.textSoft;
-  return <span style={{fontSize:11,fontWeight:600,padding:"3px 9px",borderRadius:20,color:c,background:`${c}18`,border:`1px solid ${c}30`,whiteSpace:"nowrap",display:"inline-block",maxWidth:"100%",overflow:"hidden",textOverflow:"ellipsis"}}>{label}</span>;
-}
-
+// ─── COMPOSANTS UI PARTAGÉS ───────────────────────────────────────────────────
 function KpiCard({label,value,sub,color,pct=0}){
   return (
     <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,padding:"20px 22px",boxShadow:"0 2px 6px rgba(0,0,0,0.05)",borderLeft:`4px solid ${color}`}}>
-      <div style={{fontSize:10,color:T.textSoft,fontWeight:700,letterSpacing:"0.07em",textTransform:"uppercase",marginBottom:10}}>{label}</div>
-      <div style={{fontSize:28,fontWeight:800,color:color,lineHeight:1,marginBottom:6}}>{value}</div>
-      <div style={{fontSize:12,color:T.textMed,marginBottom:10}}>{sub}</div>
+      <div style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>{label}</div>
+      <div style={{fontSize:24,fontWeight:800,color,marginBottom:4,lineHeight:1}}>{value}</div>
+      <div style={{fontSize:11,color:T.textMed,marginBottom:12}}>{sub}</div>
       <div style={{height:4,background:T.border,borderRadius:2}}>
-        <div style={{height:4,background:`linear-gradient(90deg,${color}66,${color})`,width:`${Math.min(pct,100)}%`,borderRadius:2}}/>
+        <div style={{height:4,background:color,width:`${Math.min(pct,100)}%`,borderRadius:2,transition:"width 0.6s"}}/>
       </div>
     </div>
   );
 }
 
-function ProgressBar({value}){
-  const pct=Math.round((value||0)*100);
-  const color=pct>=80?T.sage:pct>=50?T.teal:pct>=20?T.indigo:T.textSoft;
+function Badge({label,color}){
+  const c=color||S_COLOR[label]||T.textSoft;
+  return <span style={{fontSize:11,fontWeight:600,padding:"3px 9px",borderRadius:20,color:c,background:`${c}18`,border:`1px solid ${c}30`,whiteSpace:"nowrap"}}>{label}</span>;
+}
+
+function SearchInput({value,onChange,placeholder}){
   return (
-    <div style={{display:"flex",alignItems:"center",gap:7}}>
-      <div style={{flex:1,height:6,background:T.border,borderRadius:3}}>
-        <div style={{height:6,background:`linear-gradient(90deg,${color}88,${color})`,width:`${pct}%`,borderRadius:3,transition:"width 0.3s"}}/>
-      </div>
-      <span style={{fontSize:11,color:color,fontWeight:700,width:34,textAlign:"right",flexShrink:0}}>{pct}%</span>
+    <div style={{position:"relative",flex:1,minWidth:200}}>
+      <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:T.textSoft,pointerEvents:"none"}}>🔍</span>
+      <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Rechercher…"}
+        style={{width:"100%",padding:"7px 10px 7px 30px",border:`1.5px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text,background:T.bg,outline:"none",boxSizing:"border-box"}}/>
     </div>
   );
 }
 
 function MultiSelect({label,options,selected,onChange,colorMap}){
-  const [open,setOpen]=useState(false);const ref=useRef();
-  useEffect(()=>{const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);},[]);
+  const [open,setOpen]=useState(false);
+  const ref=useRef();
+  useEffect(()=>{
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
+  },[]);
   const toggle=v=>onChange(selected.includes(v)?selected.filter(x=>x!==v):[...selected,v]);
-  const active=selected.length>0;
   return (
     <div ref={ref} style={{position:"relative"}}>
-      <button onClick={()=>setOpen(o=>!o)} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:6,padding:"7px 13px",borderRadius:8,border:`1.5px solid ${active?T.indigo:T.border}`,background:active?T.indigoL:T.card,color:active?T.indigo:T.textMed,fontSize:12,fontWeight:600,transition:"all 0.15s"}}>
-        {label}{active?` · ${selected.length}`:""} <span style={{fontSize:9}}>{open?"▲":"▼"}</span>
+      <button onClick={()=>setOpen(o=>!o)}
+        style={{padding:"7px 12px",border:`1.5px solid ${selected.length?T.indigo:T.border}`,borderRadius:8,background:selected.length?T.indigoL:T.bg,color:selected.length?T.indigo:T.textMed,fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+        {label}{selected.length>0&&<span style={{background:T.indigo,color:"#fff",borderRadius:10,padding:"1px 6px",fontSize:10}}>{selected.length}</span>}
+        <span style={{fontSize:9,opacity:0.6}}>{open?"▲":"▼"}</span>
       </button>
       {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 6px)",left:0,zIndex:300,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,padding:8,minWidth:220,maxHeight:300,overflowY:"auto",boxShadow:"0 12px 32px rgba(0,0,0,0.10)"}}>
-          {selected.length>0&&<div onClick={()=>onChange([])} style={{cursor:"pointer",fontSize:11,color:T.textSoft,padding:"4px 8px",marginBottom:4}}>✕ Tout effacer</div>}
-          {options.map(opt=>{
-            const c=colorMap?.[opt]||T.textMed;const sel=selected.includes(opt);
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:200,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",minWidth:220,padding:6}}>
+          {options.map(o=>{
+            const active=selected.includes(o);
+            const c=colorMap?.[o]||T.textSoft;
             return (
-              <div key={opt} onClick={()=>toggle(opt)} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:9,padding:"8px 10px",borderRadius:6,background:sel?`${c}12`:"transparent",marginBottom:2}}>
-                <div style={{width:14,height:14,borderRadius:4,border:`2px solid ${sel?c:T.borderMd}`,background:sel?c:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                  {sel&&<span style={{fontSize:9,color:"#fff",fontWeight:900}}>✓</span>}
-                </div>
-                <span style={{fontSize:12,color:sel?T.text:T.textMed,fontWeight:sel?600:400}}>{opt}</span>
+              <div key={o} onClick={()=>toggle(o)}
+                style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8,background:active?`${c}12`:"transparent"}}>
+                <div style={{width:8,height:8,borderRadius:"50%",background:c,flexShrink:0}}/>
+                <span style={{fontSize:12,color:active?c:T.text,fontWeight:active?700:400,flex:1}}>{o}</span>
+                {active&&<span style={{fontSize:10,color:c}}>✓</span>}
               </div>
             );
           })}
+          {selected.length>0&&<div onClick={()=>onChange([])} style={{padding:"6px 10px",borderTop:`1px solid ${T.border}`,marginTop:4,fontSize:11,color:T.rose,cursor:"pointer",textAlign:"center",fontWeight:600}}>Tout effacer</div>}
         </div>
       )}
     </div>
   );
 }
 
-function SearchInput({value,onChange,placeholder}){
-  return (
-    <div style={{position:"relative"}}>
-      <span style={{position:"absolute",left:11,top:"50%",transform:"translateY(-50%)",fontSize:14,color:T.textSoft,pointerEvents:"none"}}>⌕</span>
-      <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
-        style={{padding:"8px 32px 8px 30px",background:T.card,border:`1.5px solid ${T.border}`,borderRadius:8,color:T.text,fontSize:12,fontFamily:"inherit",outline:"none",width:250,transition:"border-color 0.15s"}}
-        onFocus={e=>e.target.style.borderColor=T.indigo} onBlur={e=>e.target.style.borderColor=T.border}/>
-      {value&&<span onClick={()=>onChange("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",cursor:"pointer",fontSize:13,color:T.textSoft}}>✕</span>}
-    </div>
-  );
-}
-
 function DateRange({dateFrom,dateTo,onChange}){
   const active=dateFrom||dateTo;
-  const inp={background:T.card,border:`1.5px solid ${active?T.indigo:T.border}`,borderRadius:7,color:T.text,fontSize:12,fontFamily:"inherit",outline:"none",padding:"6px 8px",width:122};
+  const inp={border:"none",background:"transparent",fontSize:12,color:T.text,outline:"none",width:110,cursor:"pointer"};
   return (
-    <div style={{display:"flex",alignItems:"center",gap:7,padding:"5px 11px",borderRadius:8,border:`1.5px solid ${active?T.indigo:T.border}`,background:active?T.indigoL:T.card}}>
+    <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",border:`1.5px solid ${active?T.indigo:T.border}`,borderRadius:8,background:active?T.indigoL:T.card}}>
       <span style={{fontSize:11,color:active?T.indigo:T.textSoft,fontWeight:600}}>Du</span>
       <input type="date" value={dateFrom||""} onChange={e=>onChange(e.target.value,dateTo)} style={inp}/>
       <span style={{fontSize:11,color:active?T.indigo:T.textSoft,fontWeight:600}}>au</span>
@@ -380,13 +337,15 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
   const [dateTo,setDateTo]=useState("");
   const [sortBy,setSortBy]=useState("date_offre");
   const [sortDir,setSortDir]=useState("desc");
-  const [showArchived,setShowArchived]=useState(false); // 👈 ICI
+  const [showArchived,setShowArchived]=useState(false); // ← NOUVEAU
+
   const handleSort=k=>{if(sortBy===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortBy(k);setSortDir("desc");}};
 
   const offersInPeriod=useMemo(()=>offers.filter(o=>inRange(o.date_offre,periodFrom,periodTo)),[offers,periodFrom,periodTo]);
 
+  // ← CORRECTION : filtre is_archived par défaut
   const filtered=useMemo(()=>{
-    let rows=offers.filter(o=>showArchived ? true : !o.is_archived); // 👈 AJOUTER CETTE LIGNE
+    let rows=offers.filter(o=>showArchived?true:!o.is_archived);
     if(search.trim()){const q=search.toLowerCase();rows=rows.filter(o=>o._project_attached?.name?.toLowerCase().includes(q)||o._project_attached?._company_attached?.name?.toLowerCase().includes(q)||o.offer_number?.toLowerCase().includes(q));}
     if(filterStatuts.length)rows=rows.filter(o=>filterStatuts.includes(o.os_devis_statut));
     if(dateFrom)rows=rows.filter(o=>o.date_offre&&o.date_offre>=dateFrom);
@@ -402,32 +361,31 @@ function TabDevis({offers,selectedCompany,onSelectCompany}){
       else{va=new Date(a.date_offre||0);vb=new Date(b.date_offre||0);}
       if(va<vb)return sortDir==="asc"?-1:1;if(va>vb)return sortDir==="asc"?1:-1;return 0;
     });
-  },[offers,search,filterStatuts,dateFrom,dateTo,selectedCompany,sortBy,sortDir]);
+  },[offers,search,filterStatuts,dateFrom,dateTo,selectedCompany,sortBy,sortDir,showArchived]);
 
-  const active=offersInPeriod.filter(o=>o.is_active);
-const signe=active.filter(o=>STATUTS_SIGNES.includes(o.os_devis_statut));
-const pipeline=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut));
-const caSigne=signe.reduce((s,o)=>s+(o.montant_ht||0),0);
-const caPipeline=pipeline.reduce((s,o)=>s+(o.montant_ht||0),0);
+  const active=offersInPeriod.filter(o=>o.is_active&&!o.is_archived);
+  const signe=active.filter(o=>STATUTS_SIGNES.includes(o.os_devis_statut));
+  const pipeline=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut));
+  const caSigne=signe.reduce((s,o)=>s+(o.montant_ht||0),0);
+  const caPipeline=pipeline.reduce((s,o)=>s+(o.montant_ht||0),0);
 
-// Taux de conversion : Signés+Terminés / TOUS (car on peut passer Saisie → Terminé directement)
-const dansLaCourse=active.filter(o=>o.os_devis_statut!=="Classé sans suite"&&o.os_devis_statut!=="Non formalisé");
-const tauxConv=dansLaCourse.length?Math.round((signe.length/dansLaCourse.length)*100):0;
+  // ← CORRECTION taux de conversion : Signés / tous sauf Classé sans suite + Non formalisé
+  // (inclut Saisie d'information car on peut passer directement Saisie → Terminé)
+  const dansLaCourse=active.filter(o=>o.os_devis_statut!=="Classé sans suite"&&o.os_devis_statut!=="Non formalisé");
+  const tauxConv=dansLaCourse.length?Math.round((signe.length/dansLaCourse.length)*100):0;
 
-const expirent=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut))
-  .map(o=>({...o,daysLeft:diffDays(o.date_validite)}))
-  .filter(o=>o.daysLeft!==null&&o.daysLeft<=7).sort((a,b)=>a.daysLeft-b.daysLeft);
-const totalFiltre=filtered.reduce((s,o)=>s+(o.montant_ht||0),0);
+  const expirent=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut))
+    .map(o=>({...o,daysLeft:diffDays(o.date_validite)}))
+    .filter(o=>o.daysLeft!==null&&o.daysLeft<=7).sort((a,b)=>a.daysLeft-b.daysLeft);
+  const totalFiltre=filtered.reduce((s,o)=>s+(o.montant_ht||0),0);
 
-// Synthèse statuts actifs (hors Classé sans suite & Non formalisé) — remplace topClients
-const STATUTS_ACTIFS=["Saisie d'information","Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée","Devis signé","Projet terminé"];
-const byStatutActif=STATUTS_ACTIFS.map(s=>({
-  s,
-  count:offersInPeriod.filter(o=>o.os_devis_statut===s).length,
-  montant:offersInPeriod.filter(o=>o.os_devis_statut===s).reduce((sum,o)=>sum+(o.montant_ht||0),0),
-  color:S_COLOR[s]||T.textSoft,
-  isActive:filterStatuts.includes(s),
-})).filter(d=>d.count>0);
+  // ← NOUVEAU : synthèse par statut (remplace topClients)
+  const byStatutActif=STATUTS_ACTIFS_SYNTHESE.map(s=>({
+    s,
+    count:offersInPeriod.filter(o=>!o.is_archived&&o.os_devis_statut===s).length,
+    montant:offersInPeriod.filter(o=>!o.is_archived&&o.os_devis_statut===s).reduce((sum,o)=>sum+(o.montant_ht||0),0),
+    color:S_COLOR[s]||T.textSoft,
+  })).filter(d=>d.count>0);
 
   const byStatut=STATUT_DEVIS.map(s=>({
     s:s.length>13?s.slice(0,13)+"…":s,full:s,
@@ -435,24 +393,27 @@ const byStatutActif=STATUTS_ACTIFS.map(s=>({
     montant:offersInPeriod.filter(o=>o.os_devis_statut===s).reduce((sum,o)=>sum+(o.montant_ht||0),0),
   })).filter(d=>d.count>0);
 
-  const hasPeriod=periodFrom||periodTo;
   const hasFilters=search||filterStatuts.length||dateFrom||dateTo||selectedCompany;
+  const hasPeriod=periodFrom||periodTo;
 
   return (
     <div>
+      {/* BARRE PÉRIODE KPIs */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"10px 16px",background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
         <span style={{fontSize:12,color:T.textMed,fontWeight:700}}>📅 Période KPIs</span>
         <DateRange dateFrom={periodFrom} dateTo={periodTo} onChange={(f,t)=>{setPeriodFrom(f);setPeriodTo(t);}}/>
         <span style={{fontSize:12,color:hasPeriod?T.indigo:T.textSoft}}>{hasPeriod?`${offersInPeriod.length} devis dans la période`:"Toutes les périodes"}</span>
       </div>
 
+      {/* KPI CARDS */}
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
-        <KpiCard label="CA Signé"        value={fmt(caSigne)}    sub={`${signe.length} devis signés`}    color={T.sage}   pct={(caSigne/(caSigne+caPipeline+1))*100}/>
-        <KpiCard label="CA Pipeline"     value={fmt(caPipeline)} sub={`${pipeline.length} en cours`}     color={T.indigo} pct={(caPipeline/(caSigne+caPipeline+1))*100}/>
-        <KpiCard label="Taux conversion" value={`${tauxConv}%`}  sub={`sur ${active.length} actifs`}     color={T.violet} pct={tauxConv}/>
+        <KpiCard label="CA Signé"        value={fmt(caSigne)}    sub={`${signe.length} devis signés`}       color={T.sage}   pct={(caSigne/(caSigne+caPipeline+1))*100}/>
+        <KpiCard label="CA Pipeline"     value={fmt(caPipeline)} sub={`${pipeline.length} en cours`}        color={T.indigo} pct={(caPipeline/(caSigne+caPipeline+1))*100}/>
+        <KpiCard label="Taux conversion" value={`${tauxConv}%`}  sub={`sur ${dansLaCourse.length} actifs`}  color={T.violet} pct={tauxConv}/>
         <KpiCard label="Expirent ≤7j"    value={expirent.length} sub={expirent.length>0?"⚠ Action requise":"✓ Tout est ok"} color={expirent.length>0?T.rose:T.sage}/>
       </div>
 
+      {/* GRAPHIQUE + SYNTHÈSE STATUTS */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:14,marginBottom:20}}>
         <Card title="Répartition CA par statut" badge={<PeriodTag on={hasPeriod}/>}>
           <ResponsiveContainer width="100%" height={200}>
@@ -460,72 +421,86 @@ const byStatutActif=STATUTS_ACTIFS.map(s=>({
               <XAxis dataKey="s" tick={{fontSize:9,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} angle={-20} textAnchor="end"/>
               <YAxis tickFormatter={fmtK} tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} width={46}/>
               <Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text}} formatter={(v,_,p)=>[fmt(v),`${p.payload.count} devis`]} labelFormatter={(_,p)=>p[0]?.payload?.full||""}/>
-              <Bar dataKey="montant" radius={[5,5,0,0]}>{byStatut.map(e=><Cell key={e.full} fill={S_COLOR[e.full]||T.textSoft} opacity={0.85}/>)}</Bar>
+              <Bar dataKey="montant" radius={[5,5,0,0]}>
+                {byStatut.map(e=><Cell key={e.full} fill={S_COLOR[e.full]||T.textSoft} opacity={0.85}/>)}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </Card>
 
+        {/* ← NOUVEAU BLOC : Synthèse par statut (remplace Top clients) */}
         <Card title="Synthèse par statut" badge={<PeriodTag on={hasPeriod}/>}>
-  <div style={{display:"flex",flexDirection:"column",gap:6}}>
-    {byStatutActif.length===0
-      ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucun devis dans la période</div>
-      :byStatutActif.map(d=>(
-        <div key={d.s}
-          onClick={()=>setFilterStatuts(prev=>prev.includes(d.s)?prev.filter(x=>x!==d.s):[...prev,d.s])}
-          style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,cursor:"pointer",
-            background:filterStatuts.includes(d.s)?`${d.color}15`:T.cardAlt,
-            border:`1.5px solid ${filterStatuts.includes(d.s)?d.color:T.border}`,
-            transition:"all 0.15s"}}
-          onMouseEnter={e=>e.currentTarget.style.background=`${d.color}10`}
-          onMouseLeave={e=>e.currentTarget.style.background=filterStatuts.includes(d.s)?`${d.color}15`:T.cardAlt}>
-          <div style={{width:9,height:9,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-          <span style={{flex:1,fontSize:12,color:T.text,fontWeight:filterStatuts.includes(d.s)?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.s}</span>
-          <span style={{fontSize:12,fontWeight:700,color:d.color,flexShrink:0}}>{d.count}</span>
-          <span style={{fontSize:11,color:T.textSoft,flexShrink:0,minWidth:60,textAlign:"right"}}>{d.montant>0?fmtK(d.montant):"—"}</span>
-        </div>
-      ))
-    }
-  </div>
-  {filterStatuts.length>0&&(
-    <button onClick={()=>setFilterStatuts([])}
-      style={{marginTop:10,width:"100%",padding:"6px 0",fontSize:11,color:T.rose,background:T.roseL,border:`1px solid ${T.rose}30`,borderRadius:7,cursor:"pointer",fontWeight:600}}>
-      ✕ Réinitialiser les filtres
-    </button>
-  )}
-  {expirent.length>0&&(
-    <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`}}>
-      <div style={{fontSize:11,color:T.rose,fontWeight:700,textTransform:"uppercase",marginBottom:8}}>⚠ Expirations urgentes</div>
-      {expirent.slice(0,4).map(o=>{
-        const d=o.daysLeft;const col=d<=0?T.rose:T.amber;
-        return(
-          <div key={o.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.border}`}}>
-            <div style={{fontSize:11,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{o._project_attached?._company_attached?.name} — {o._project_attached?.name}</div>
-            <div style={{fontSize:12,fontWeight:700,color:col,flexShrink:0}}>{d<=0?"Expiré":`J-${d}`}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {byStatutActif.length===0
+              ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucun devis dans la période</div>
+              :byStatutActif.map(d=>{
+                const isActive=filterStatuts.includes(d.s);
+                return (
+                  <div key={d.s}
+                    onClick={()=>setFilterStatuts(prev=>prev.includes(d.s)?prev.filter(x=>x!==d.s):[...prev,d.s])}
+                    style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,cursor:"pointer",
+                      background:isActive?`${d.color}15`:T.cardAlt,
+                      border:`1.5px solid ${isActive?d.color:T.border}`,
+                      transition:"all 0.15s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background=`${d.color}10`}
+                    onMouseLeave={e=>e.currentTarget.style.background=isActive?`${d.color}15`:T.cardAlt}>
+                    <div style={{width:9,height:9,borderRadius:"50%",background:d.color,flexShrink:0}}/>
+                    <span style={{flex:1,fontSize:12,color:T.text,fontWeight:isActive?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.s}</span>
+                    <span style={{fontSize:13,fontWeight:700,color:d.color,flexShrink:0,minWidth:20,textAlign:"right"}}>{d.count}</span>
+                    <span style={{fontSize:11,color:T.textSoft,flexShrink:0,minWidth:55,textAlign:"right"}}>{d.montant>0?fmtK(d.montant):""}</span>
+                  </div>
+                );
+              })
+            }
           </div>
-        );
-      })}
-    </div>
-  )}
-</Card>
+          {filterStatuts.length>0&&(
+            <button onClick={()=>setFilterStatuts([])}
+              style={{marginTop:10,width:"100%",padding:"6px 0",fontSize:11,color:T.rose,background:T.roseL,border:`1px solid ${T.rose}30`,borderRadius:7,cursor:"pointer",fontWeight:600}}>
+              ✕ Réinitialiser les filtres statut
+            </button>
+          )}
+          {expirent.length>0&&(
+            <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`}}>
+              <div style={{fontSize:11,color:T.rose,fontWeight:700,textTransform:"uppercase",marginBottom:8}}>⚠ Expirations urgentes</div>
+              {expirent.slice(0,4).map(o=>{
+                const d=o.daysLeft;const col=d<=0?T.rose:T.amber;
+                return(
+                  <div key={o.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.border}`}}>
+                    <div style={{fontSize:11,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{o._project_attached?._company_attached?.name} — {o._project_attached?.name}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:col,flexShrink:0}}>{d<=0?"Expiré":`J-${d}`}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
       </div>
 
+      {/* TABLEAU */}
       <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:T.cardAlt}}>
           <SearchInput value={search} onChange={setSearch} placeholder="Projet, entreprise, référence…"/>
           <MultiSelect label="Statut" options={STATUT_DEVIS} selected={filterStatuts} onChange={setFilterStatuts} colorMap={S_COLOR}/>
           <DateRange dateFrom={dateFrom} dateTo={dateTo} onChange={(f,t)=>{setDateFrom(f);setDateTo(t);}}/>
           {hasFilters&&<button onClick={()=>{setSearch("");setFilterStatuts([]);setDateFrom("");setDateTo("");onSelectCompany(null);}} style={{cursor:"pointer",padding:"7px 13px",background:T.indigoL,border:`1px solid ${T.indigo}44`,borderRadius:8,color:T.indigo,fontSize:12,fontWeight:600}}>Réinitialiser</button>}
+
+          {/* ← NOUVEAU : toggle archivés */}
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:T.textMed,cursor:"pointer",userSelect:"none",padding:"6px 10px",borderRadius:8,border:`1.5px solid ${showArchived?T.amber:T.border}`,background:showArchived?T.amberL:T.bg}}>
+            <input type="checkbox" checked={showArchived} onChange={e=>setShowArchived(e.target.checked)} style={{accentColor:T.amber,cursor:"pointer"}}/>
+            Archivés
+          </label>
+
           <span style={{marginLeft:"auto",fontSize:12,color:T.textSoft,fontWeight:600}}>{filtered.length} résultat{filtered.length>1?"s":""}</span>
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"150px 1fr 150px 165px 105px 130px 72px",gap:8,padding:"10px 20px",background:T.cardAlt,borderBottom:`2px solid ${T.border}`}}>
-          <ColHeader label="Client"     sortKey="client"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Projet"     sortKey="projet"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Référence"  sortKey="offer"      sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Statut"     sortKey="statut"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Montant HT" sortKey="montant_ht" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Avancement" sortKey="avancement" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Expir."     sortKey="expiration" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <ColHeader label="Client ▾"      sortKey="client"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <ColHeader label="Projet ▾"      sortKey="projet"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <ColHeader label="Référence"     sortKey="offer"      sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <ColHeader label="Statut"        sortKey="statut"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <ColHeader label="Montant HT ▾"  sortKey="montant_ht" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <ColHeader label="Avancement ▾"  sortKey="avancement" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
+          <ColHeader label="Expir. ▾"      sortKey="expiration" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
         </div>
 
         <div style={{maxHeight:520,overflowY:"auto"}}>
@@ -533,18 +508,25 @@ const byStatutActif=STATUTS_ACTIFS.map(s=>({
             ?<div style={{padding:"40px 20px",textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun résultat pour ces filtres</div>
             :filtered.map((o,idx)=>{
               const d=diffDays(o.date_validite);
-              const ec=d===null?T.textSoft:d<=0?T.rose:d<=3?T.amber:d<=7?T.amber:T.textSoft;
+              const expColor=d===null?T.textSoft:d<=0?T.rose:d<=7?T.amber:T.textSoft;
+              const av=Math.round((o._project_attached?.avancement||0)*100);
+              const avColor=av>=80?T.sage:av>=40?T.teal:T.textSoft;
               return (
-                <div key={o.id} style={{display:"grid",gridTemplateColumns:"150px 1fr 150px 165px 105px 130px 72px",gap:8,padding:"11px 20px",borderBottom:`1px solid ${T.border}`,alignItems:"center",background:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s"}}
+                <div key={o.id} style={{display:"grid",gridTemplateColumns:"150px 1fr 150px 165px 105px 130px 72px",gap:8,padding:"11px 20px",borderBottom:`1px solid ${T.border}`,alignItems:"center",background:o.is_archived?`${T.amber}08`:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s",opacity:o.is_archived?0.7:1}}
                   onMouseEnter={e=>e.currentTarget.style.background=T.indigoL}
-                  onMouseLeave={e=>e.currentTarget.style.background=idx%2===0?T.card:T.cardAlt}>
-                  <span style={{fontSize:12,color:T.text,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o._project_attached?._company_attached?.name}</span>
-                  <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o._project_attached?.name}</span>
-                  <span style={{fontSize:11,color:T.textSoft,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.offer_number}</span>
-                  <Badge label={o.os_devis_statut}/>
-                  <span style={{fontSize:13,fontWeight:700,color:T.text,textAlign:"right"}}>{fmt(o.montant_ht)}</span>
-                  <ProgressBar value={o._project_attached?.avancement||0}/>
-                  <span style={{fontSize:11,color:ec,textAlign:"right",fontWeight:600}}>{d===null?"—":d<=0?"Expiré":`J-${d}`}</span>
+                  onMouseLeave={e=>e.currentTarget.style.background=o.is_archived?`${T.amber}08`:idx%2===0?T.card:T.cardAlt}>
+                  <span style={{fontSize:12,fontWeight:700,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o._project_attached?._company_attached?.name||"—"}</span>
+                  <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o._project_attached?.name||"—"}</span>
+                  <span style={{fontSize:11,color:T.textSoft,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.offer_number}</span>
+                  <Badge label={o.os_devis_statut||"—"}/>
+                  <span style={{fontSize:13,fontWeight:700,color:T.text,textAlign:"right"}}>{o.montant_ht>0?fmt(o.montant_ht):"0 €"}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <div style={{flex:1,height:5,background:T.border,borderRadius:3}}>
+                      <div style={{height:5,background:avColor,width:`${av}%`,borderRadius:3}}/>
+                    </div>
+                    <span style={{fontSize:10,color:avColor,fontWeight:700,width:28,flexShrink:0}}>{av}%</span>
+                  </div>
+                  <span style={{fontSize:11,fontWeight:700,color:expColor,textAlign:"right"}}>{d===null?"—":d<=0?"Expiré":`J-${d}`}</span>
                 </div>
               );
             })
@@ -607,56 +589,38 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
   const regionData=Object.entries(byRegion).sort((a,b)=>b[1]-a[1]).slice(0,12);
   const maxRegion=regionData[0]?.[1]||1;
 
-  const byMonth={};intervInPeriod.forEach(i=>{if(i.date){const m=i.date.slice(0,7);byMonth[m]=(byMonth[m]||0)+1;}});
-  const monthData=Object.entries(byMonth).sort().slice(-6).map(([m,count])=>({mois:mLabel(m+"-01"),count}));
-
   const byClientI={};
   intervInPeriod.forEach(i=>{const c=i._project_attached?._company_attached;if(!c)return;if(!byClientI[c.id])byClientI[c.id]={id:c.id,name:c.name,count:0};byClientI[c.id].count++;});
   const topClientsI=Object.values(byClientI).sort((a,b)=>b.count-a.count).slice(0,5);
   const maxClientI=topClientsI[0]?.count||1;
 
-  const hasPeriod=periodFrom||periodTo;
+  const moisLabels=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
+  const byMois={};
+  interventions.forEach(i=>{if(!i.date)return;const m=new Date(i.date).getMonth();byMois[m]=(byMois[m]||0)+1;});
+  const moisData=Array.from({length:12},(_,m)=>({mois:moisLabels[m],count:byMois[m]||0}));
+
   const hasFilters=search||filterStatuts.length||filterTypes.length||dateFrom||dateTo||selectedCompany;
+  const hasPeriod=periodFrom||periodTo;
 
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"10px 16px",background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
         <span style={{fontSize:12,color:T.textMed,fontWeight:700}}>📅 Période KPIs</span>
         <DateRange dateFrom={periodFrom} dateTo={periodTo} onChange={(f,t)=>{setPeriodFrom(f);setPeriodTo(t);}}/>
-        <span style={{fontSize:12,color:hasPeriod?T.indigo:T.textSoft}}>{hasPeriod?`${intervInPeriod.length} interventions dans la période`:"Toutes les périodes"}</span>
+        <span style={{fontSize:12,color:hasPeriod?T.teal:T.textSoft}}>{hasPeriod?`${intervInPeriod.length} interventions dans la période`:"Toutes les périodes"}</span>
       </div>
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
-        <KpiCard label="Total"      value={intervInPeriod.length} sub={`sur ${projects.length} projets`} color={T.indigo} pct={100}/>
-        <KpiCard label="Terminées"  value={terminees.length}  sub={`${Math.round((terminees.length/total)*100)}% du total`} color={T.sage}   pct={(terminees.length/total)*100}/>
-        <KpiCard label="En cours"   value={enCours.length}    sub="actives"  color={T.amber}  pct={(enCours.length/total)*100}/>
-        <KpiCard label="Planifiées" value={planifiees.length} sub="à venir"  color={T.violet} pct={(planifiees.length/total)*100}/>
+        <KpiCard label="Total interventions" value={intervInPeriod.length}                  sub="dans la période"      color={T.teal}   pct={100}/>
+        <KpiCard label="Terminées"           value={terminees.length}                       sub={`${Math.round(terminees.length/total*100)}% du total`} color={T.sage} pct={terminees.length/total*100}/>
+        <KpiCard label="En cours"            value={enCours.length}                         sub="en progression"       color={T.amber}  pct={enCours.length/total*100}/>
+        <KpiCard label="Planifiées"          value={planifiees.length}                      sub="à venir"              color={T.violet} pct={planifiees.length/total*100}/>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 280px",gap:14,marginBottom:20}}>
-        <Card title="Types de prestations" badge={<PeriodTag on={hasPeriod}/>}>
-          <div style={{display:"flex",alignItems:"center",gap:16}}>
-            <ResponsiveContainer width={130} height={130}>
-              <PieChart><Pie data={typeData} cx="50%" cy="50%" innerRadius={36} outerRadius={60} dataKey="value" paddingAngle={3}>
-                {typeData.map((_,i)=><Cell key={i} fill={CHART_COLORS[i%CHART_COLORS.length]}/>)}
-              </Pie><Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,fontSize:12}}/></PieChart>
-            </ResponsiveContainer>
-            <div style={{flex:1}}>
-              {typeData.map((t,i)=>(
-                <div key={t.name} style={{display:"flex",alignItems:"center",gap:7,marginBottom:8,cursor:"pointer"}}
-                  onClick={()=>setFilterTypes(filterTypes.includes(t.name)?filterTypes.filter(x=>x!==t.name):[...filterTypes,t.name])}>
-                  <div style={{width:9,height:9,borderRadius:2,background:CHART_COLORS[i%CHART_COLORS.length],flexShrink:0}}/>
-                  <span style={{fontSize:12,color:filterTypes.includes(t.name)?T.text:T.textMed,flex:1,fontWeight:filterTypes.includes(t.name)?600:400}}>{t.name}</span>
-                  <span style={{fontSize:12,fontWeight:700,color:CHART_COLORS[i%CHART_COLORS.length]}}>{t.value}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Activité mensuelle" badge={<PeriodTag on={hasPeriod}/>}>
-          <ResponsiveContainer width="100%" height={150}>
-            <BarChart data={monthData} margin={{top:4,right:4,left:0,bottom:4}}>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:14,marginBottom:20}}>
+        <Card title="Interventions par mois" badge={<PeriodTag on={hasPeriod}/>}>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={moisData} margin={{top:4,right:4,left:0,bottom:4}}>
               <XAxis dataKey="mois" tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} width={22} allowDecimals={false}/>
               <Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,fontSize:12}}/>
@@ -684,11 +648,11 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
             {topClientsI.map((c,i)=>(
               <div key={c.id} style={{marginBottom:7,cursor:"pointer"}} onClick={()=>onSelectCompany(selectedCompany===c.id?null:c.id)}>
                 <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                  <span style={{color:selectedCompany===c.id?T.indigo:T.text,fontWeight:selectedCompany===c.id?700:500}}>{c.name}</span>
-                  <span style={{color:T.textSoft}}>{c.count}</span>
+                  <span style={{color:selectedCompany===c.id?T.teal:T.textMed,fontWeight:selectedCompany===c.id?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:155}}>{c.name}</span>
+                  <span style={{color:T.textSoft,flexShrink:0,marginLeft:6}}>{c.count}</span>
                 </div>
                 <div style={{height:4,background:T.border,borderRadius:2}}>
-                  <div style={{height:4,background:selectedCompany===c.id?T.indigo:i===0?T.sage:T.border,width:`${(c.count/maxClientI)*100}%`,borderRadius:2}}/>
+                  <div style={{height:4,background:selectedCompany===c.id?T.teal:i===0?T.teal:T.border,width:`${(c.count/maxClientI)*100}%`,borderRadius:2,transition:"all 0.4s"}}/>
                 </div>
               </div>
             ))}
@@ -700,9 +664,9 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
         <div style={{padding:"16px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:T.cardAlt}}>
           <SearchInput value={search} onChange={setSearch} placeholder="Intervention, projet, entreprise…"/>
           <MultiSelect label="Statut" options={STATUT_INTERV} selected={filterStatuts} onChange={setFilterStatuts} colorMap={S_COLOR}/>
-          <MultiSelect label="Type"   options={allTypes}      selected={filterTypes}   onChange={setFilterTypes}/>
+          <MultiSelect label="Type" options={allTypes} selected={filterTypes} onChange={setFilterTypes}/>
           <DateRange dateFrom={dateFrom} dateTo={dateTo} onChange={(f,t)=>{setDateFrom(f);setDateTo(t);}}/>
-          {hasFilters&&<button onClick={()=>{setSearch("");setFilterStatuts([]);setFilterTypes([]);setDateFrom("");setDateTo("");onSelectCompany(null);}} style={{cursor:"pointer",padding:"7px 13px",background:T.indigoL,border:`1px solid ${T.indigo}44`,borderRadius:8,color:T.indigo,fontSize:12,fontWeight:600}}>Réinitialiser</button>}
+          {hasFilters&&<button onClick={()=>{setSearch("");setFilterStatuts([]);setFilterTypes([]);setDateFrom("");setDateTo("");onSelectCompany(null);}} style={{cursor:"pointer",padding:"7px 13px",background:T.tealL,border:`1px solid ${T.teal}44`,borderRadius:8,color:T.teal,fontSize:12,fontWeight:600}}>Réinitialiser</button>}
           <span style={{marginLeft:"auto",fontSize:12,color:T.textSoft,fontWeight:600}}>{filtered.length} résultat{filtered.length>1?"s":""}</span>
         </div>
 
@@ -720,7 +684,7 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
             ?<div style={{padding:"40px 20px",textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun résultat pour ces filtres</div>
             :filtered.map((i,idx)=>(
               <div key={i.id} style={{display:"grid",gridTemplateColumns:"150px 180px 1fr 140px 95px 120px",gap:8,padding:"11px 20px",borderBottom:`1px solid ${T.border}`,alignItems:"center",background:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s"}}
-                onMouseEnter={e=>e.currentTarget.style.background=T.indigoL}
+                onMouseEnter={e=>e.currentTarget.style.background=T.tealL}
                 onMouseLeave={e=>e.currentTarget.style.background=idx%2===0?T.card:T.cardAlt}>
                 <span style={{fontSize:12,color:T.text,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{i._project_attached?._company_attached?.name}</span>
                 <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{i._project_attached?.name}</span>
@@ -740,86 +704,26 @@ function TabInterventions({interventions,projects,selectedCompany,onSelectCompan
   );
 }
 
-// ─── SEARCHBOX CLIENT (dans le header) ───────────────────────────────────────
-function ClientSearchBox({companies, onSelect}){
-  const [query, setQuery]     = useState("");
-  const [results, setResults] = useState([]);
-  const [open, setOpen]       = useState(false);
-  const [focused, setFocused] = useState(false);
-  const ref    = useRef();
-  const timer  = useRef();
-
+// ─── AUTOCOMPLETE SEARCH ──────────────────────────────────────────────────────
+function CompanySearch({companies,onSelect}){
+  const [q,setQ]=useState("");
+  const [open,setOpen]=useState(false);
+  const ref=useRef();
   useEffect(()=>{
-    const h = e => { if(ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", h);
-    return () => document.removeEventListener("mousedown", h);
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target)){setOpen(false);}};
+    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
   },[]);
-
-  const handleChange = e => {
-    const q = e.target.value;
-    setQuery(q);
-    clearTimeout(timer.current);
-    if(!q.trim()){ setResults([]); setOpen(false); return; }
-    timer.current = setTimeout(()=>{
-      const norm = s => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
-      const nq   = norm(q);
-      const hits = companies
-        .filter(c => norm(c.name||"").includes(nq))
-        .slice(0, 8);
-      setResults(hits);
-      setOpen(hits.length > 0);
-    }, 300);
-  };
-
-  const handleSelect = company => {
-    setQuery(company.name);
-    setOpen(false);
-    onSelect(company);
-  };
-
-  const handleClear = () => { setQuery(""); setResults([]); setOpen(false); };
-
+  const results=q.trim().length>0?companies.filter(c=>c.name.toLowerCase().includes(q.toLowerCase())).slice(0,8):[];
   return (
-    <div ref={ref} style={{position:"relative"}}>
-      <div style={{
-        display:"flex", alignItems:"center", gap:6,
-        padding:"6px 12px",
-        background: focused ? T.card : T.bg,
-        border:`1.5px solid ${focused ? T.indigo : T.border}`,
-        borderRadius:8, transition:"all 0.15s", width:220,
-      }}>
-        <span style={{fontSize:13, color:T.textSoft, flexShrink:0}}>⌕</span>
-        <input
-          value={query}
-          onChange={handleChange}
-          onFocus={()=>setFocused(true)}
-          onBlur={()=>setFocused(false)}
-          placeholder="Rechercher un client…"
-          style={{
-            border:"none", outline:"none", background:"transparent",
-            color:T.text, fontSize:12, fontFamily:"inherit", flex:1, width:"100%"
-          }}
-        />
-        {query && (
-          <span onClick={handleClear}
-            style={{cursor:"pointer",fontSize:13,color:T.textSoft,flexShrink:0,lineHeight:1}}>×</span>
-        )}
-      </div>
-
-      {open && (
-        <div style={{
-          position:"absolute", top:"calc(100% + 6px)", left:0, right:0,
-          background:T.card, border:`1px solid ${T.border}`, borderRadius:10,
-          boxShadow:"0 12px 32px rgba(0,0,0,0.12)", zIndex:500, overflow:"hidden",
-        }}>
-          {results.map((c,i) => (
-            <div key={c.id} onMouseDown={()=>handleSelect(c)}
-              style={{
-                padding:"9px 14px", cursor:"pointer", fontSize:12,
-                color:T.text, fontWeight:500,
-                borderBottom: i < results.length-1 ? `1px solid ${T.border}` : "none",
-                background:T.card, transition:"background 0.1s",
-              }}
+    <div ref={ref} style={{position:"relative",width:260}}>
+      <input value={q} onChange={e=>{setQ(e.target.value);setOpen(true);}} onFocus={()=>q&&setOpen(true)}
+        placeholder="🔍 Rechercher un client…"
+        style={{width:"100%",padding:"7px 12px",border:`1.5px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text,background:T.bg,outline:"none",boxSizing:"border-box"}}/>
+      {open&&results.length>0&&(
+        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:300,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",width:"100%",overflow:"hidden"}}>
+          {results.map(c=>(
+            <div key={c.id} onClick={()=>{onSelect(c);setQ("");setOpen(false);}}
+              style={{padding:"8px 14px",cursor:"pointer",fontSize:12,borderBottom:`1px solid ${T.border}`,background:T.card,transition:"background 0.1s"}}
               onMouseEnter={e=>e.currentTarget.style.background=T.indigoL}
               onMouseLeave={e=>e.currentTarget.style.background=T.card}>
               <span style={{fontWeight:700}}>{c.name}</span>
@@ -834,22 +738,20 @@ function ClientSearchBox({companies, onSelect}){
   );
 }
 
-// ─── HEADER PARTAGÉ ───────────────────────────────────────────────────────────
-// ─── HEADER PARTAGÉ ───────────────────────────────────────────────────────────
-function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, companies, onSelectClient}){
-  const navigate = useNavigate();
-  const location = useLocation();
-  const isClients = location.pathname === "/ficheclient";
-  const isContacts = location.pathname === "/contacts";
-  const isDashboard = !isClients && !isContacts;
+// ─── HEADER ───────────────────────────────────────────────────────────────────
+function AppHeader({tab,setTab,selectedName,onClearCompany,onLogout,companies,onSelectClient}){
+  const navigate=useNavigate();
+  const location=useLocation();
+  const isClients=location.pathname==="/ficheclient";
+  const isContacts=location.pathname==="/contacts";
 
-  const handleNavClick = key => {
-    if(key==="clients") { navigate("/ficheclient"); }
-    else if(key==="contacts") { navigate("/contacts"); }
-    else { if(isClients || isContacts) navigate("/"); setTab(key); }
+  const handleNavClick=key=>{
+    if(key==="clients"){navigate("/ficheclient");}
+    else if(key==="contacts"){navigate("/contacts");}
+    else{if(isClients||isContacts)navigate("/");setTab(key);}
   };
 
-  const handleSelectClient = company => {
+  const handleSelectClient=company=>{
     onSelectClient(company);
     navigate("/ficheclient");
   };
@@ -857,7 +759,6 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
   return (
     <div style={{borderBottom:`1px solid ${T.border}`,padding:"12px 28px",display:"flex",alignItems:"center",justifyContent:"space-between",background:T.card,position:"sticky",top:0,zIndex:100,boxShadow:"0 2px 8px rgba(0,0,0,0.06)"}}>
       <div style={{display:"flex",alignItems:"center",gap:20}}>
-        {/* Logo */}
         <div style={{display:"flex",alignItems:"center",gap:10,cursor:"pointer"}} onClick={()=>{navigate("/");setTab("devis");}}>
           <div style={{width:34,height:34,background:`linear-gradient(135deg,${T.indigo},${T.teal})`,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:`0 4px 12px ${T.indigo}44`}}>
             <span style={{fontSize:16,fontWeight:900,color:"#fff"}}>Q</span>
@@ -868,46 +769,38 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
           </div>
         </div>
 
-        {/* Nav tabs */}
         <div style={{display:"flex",gap:3,background:T.bg,border:`1px solid ${T.border}`,borderRadius:10,padding:4}}>
           {[
-            ["devis",       "📋 Devis"],
-            ["facturation", "💶 Facturation"], /* 👈 NOUVEL ONGLET ICI */
+            ["devis","📋 Devis"],
+            ["facturation","💶 Facturation"],
             ["interventions","🔧 Interventions"],
-            ["clients",     "🏢 Clients"],
-            ["contacts",    "📇 Contacts"],
+            ["clients","🏢 Clients"],
+            ["contacts","📇 Contacts"],
           ].map(([key,label])=>{
-            const active =
-              key==="clients"  ? isClients  :
-              key==="contacts" ? isContacts :
-              (isDashboard && tab===key);
+            const active=key==="clients"?isClients:key==="contacts"?isContacts:!isClients&&!isContacts&&tab===key;
             return (
               <button key={key} onClick={()=>handleNavClick(key)}
-                style={{cursor:"pointer",padding:"7px 20px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",
+                style={{cursor:"pointer",padding:"7px 14px",borderRadius:7,fontSize:12,fontWeight:700,border:"none",
                   background:active?T.card:"transparent",color:active?T.indigo:T.textMed,
-                  boxShadow:active?`0 1px 6px rgba(0,0,0,0.08)`:"none",transition:"all 0.15s"}}>
+                  boxShadow:active?"0 1px 4px rgba(0,0,0,0.08)":"none",transition:"all 0.15s"}}>
                 {label}
               </button>
             );
           })}
         </div>
 
-        {/* Searchbox client */}
-        {companies.length > 0 && (
-          <ClientSearchBox companies={companies} onSelect={handleSelectClient}/>
+        {selectedName&&(
+          <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",background:T.indigoL,border:`1px solid ${T.indigo}33`,borderRadius:8}}>
+            <span style={{fontSize:12,color:T.indigo,fontWeight:700}}>🏢 {selectedName}</span>
+            <span onClick={onClearCompany} style={{cursor:"pointer",fontSize:14,color:T.indigo,opacity:0.6}}>×</span>
+          </div>
         )}
       </div>
 
-      <div style={{display:"flex",alignItems:"center",gap:10}}>
-        {selectedName&&isDashboard&&(
-          <div style={{display:"flex",alignItems:"center",gap:7,padding:"6px 13px",background:T.indigoL,border:`1px solid ${T.indigo}30`,borderRadius:20}}>
-            <span style={{fontSize:12,color:T.indigo,fontWeight:700}}>🏢 {selectedName}</span>
-            <button onClick={onClearCompany} style={{cursor:"pointer",background:"none",border:"none",color:T.indigo,fontSize:15,lineHeight:1,padding:0}}>×</button>
-          </div>
-        )}
-        {USE_MOCK&&<span style={{fontSize:10,color:T.amber,padding:"3px 8px",border:`1px solid ${T.amber}44`,borderRadius:4,fontWeight:700}}>MOCK</span>}
-        <span style={{fontSize:12,color:T.textSoft,fontWeight:500}}>{new Date().toLocaleDateString("fr-FR",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}</span>
-        <button onClick={onLogout} style={{cursor:"pointer",padding:"6px 12px",borderRadius:7,border:`1px solid ${T.border}`,background:T.bg,color:T.textMed,fontSize:11,fontWeight:600,transition:"all 0.15s"}}
+      <div style={{display:"flex",alignItems:"center",gap:12}}>
+        <CompanySearch companies={companies} onSelect={handleSelectClient}/>
+        <button onClick={onLogout}
+          style={{padding:"7px 14px",border:`1px solid ${T.border}`,borderRadius:8,background:"transparent",color:T.textMed,fontSize:12,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}
           onMouseEnter={e=>{e.target.style.borderColor=T.rose;e.target.style.color=T.rose;}}
           onMouseLeave={e=>{e.target.style.borderColor=T.border;e.target.style.color=T.textMed;}}>
           Déconnexion
@@ -919,34 +812,34 @@ function AppHeader({tab, setTab, selectedName, onClearCompany, onLogout, compani
 
 // ─── COMPOSANT PRINCIPAL ──────────────────────────────────────────────────────
 export default function QualidaDashboard(){
-  const [auth, setAuth]               = useState(()=> sessionStorage.getItem("qd_auth")==="1");
-  const [tab, setTab]                 = useState("devis");
-  const [data, setData]               = useState(null);
-  const [loading, setLoading]         = useState(true);
-  const [selectedCompany, setSelectedCompany] = useState(null);
-  const [activeClient, setActiveClient] = useState(null);
+  const [auth,setAuth]=useState(()=>sessionStorage.getItem("qd_auth")==="1");
+  const [tab,setTab]=useState("devis");
+  const [data,setData]=useState(null);
+  const [loading,setLoading]=useState(true);
+  const [selectedCompany,setSelectedCompany]=useState(null);
+  const [activeClient,setActiveClient]=useState(null);
 
-  const handleLogout = () => { sessionStorage.removeItem("qd_auth"); setAuth(false); };
+  const handleLogout=()=>{sessionStorage.removeItem("qd_auth");setAuth(false);};
 
   useEffect(()=>{
-    if(auth) fetchAll().then(d=>{ setData(d); setLoading(false); });
+    if(auth) fetchAll().then(d=>{setData(d);setLoading(false);});
   },[auth]);
 
-  const allCompanies = useMemo(()=>{
+  const allCompanies=useMemo(()=>{
     if(!data) return [];
-    const seen = new Set();
-    const list = [];
-    [...data.offers, ...data.interventions].forEach(item => {
-      const c = item._project_attached?._company_attached;
-      if(c?.id && !seen.has(c.id)){ seen.add(c.id); list.push(c); }
+    const seen=new Set();
+    const list=[];
+    [...data.offers,...data.interventions].forEach(item=>{
+      const c=item._project_attached?._company_attached;
+      if(c?.id&&!seen.has(c.id)){seen.add(c.id);list.push(c);}
     });
     return list.sort((a,b)=>a.name.localeCompare(b.name));
   },[data]);
 
-  const selectedName = useMemo(()=>{
+  const selectedName=useMemo(()=>{
     if(!selectedCompany||!data) return null;
     return allCompanies.find(c=>c?.id===selectedCompany)?.name;
-  },[selectedCompany, allCompanies, data]);
+  },[selectedCompany,allCompanies,data]);
 
   if(!auth) return <Login onLogin={()=>setAuth(true)}/>;
 
@@ -989,19 +882,19 @@ export default function QualidaDashboard(){
         <Route path="/" element={
           <div style={{padding:"24px 28px",maxWidth:1440,margin:"0 auto"}}>
             {tab==="facturation"
-              ? <SuiviFacturable projects={data.projects} />
-              : tab==="devis"
-                ? <TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
-                : <TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+              ?<SuiviFacturable projects={data.projects}/>
+              :tab==="devis"
+                ?<TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+                :<TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
             }
           </div>
         }/>
         <Route path="/ficheclient" element={
           <ErrorBoundary>
-            <FicheClient key={activeClient?.name||'no-client'} clientId={activeClient?.name} clientName={activeClient?.name}/>
+            <FicheClient key={activeClient?.name||"no-client"} clientId={activeClient?.name} clientName={activeClient?.name}/>
           </ErrorBoundary>
         }/>
-        <Route path="/contacts" element={<TableContacts />}/>
+        <Route path="/contacts" element={<TableContacts/>}/>
       </Routes>
 
       <div style={{padding:"14px 28px",fontSize:11,color:T.textSoft,textAlign:"center",borderTop:`1px solid ${T.border}`,background:T.card,fontWeight:500}}>
