@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react'
 // Version test  → Bearer test_f92090a3c34a5a84387182092bf29434
 // Version live  → Bearer live_xxx  (à remplacer avant déploiement)
 const BUBBLE_TOKEN = "cc183f014a27af5df2c6f6b14d0a44ee";
-const BUBBLE_BASE  = "https://portail-qualidal.com/version-test/api/1.1";
+const BUBBLE_BASE  = "https://portail-qualidal.com/api/1.1";
 
 export default defineConfig({
   plugins: [react()],
