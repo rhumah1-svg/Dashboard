@@ -114,7 +114,6 @@ async function fetchAll() {
     };
   }
 
-  // ── Fetch toutes les tables en parallèle (sans mois_facturable_projet) ──
   const [rawOffers, rawProjects, rawInterventions, rawCompanies, rawItems] = await Promise.all([
     fetchAllPages("offers_history_documents"),
     fetchAllPages("projects"),
@@ -141,11 +140,14 @@ async function fetchAll() {
   });
 
   // ── Map projects ───────────────────────────────────────────────────────
+  // Le champ archived vient de la table projects dans Bubble
   const projectsMap = Object.fromEntries(rawProjects.map(p => {
     const company = companiesMap[p._company_attached] || null;
     const city    = extractCity(p.chantier_address);
     const num     = numByProject[p._id] || 0;
     const denom   = denomByProject[p._id] || 0;
+    // Tente tous les noms possibles du champ archived dans Bubble
+    const is_archived = p["archived?"] === true;
     return [p._id, {
       id:               p._id,
       name:             p.name || "",
@@ -156,50 +158,53 @@ async function fetchAll() {
       chantier_address: { city, state: city },
       OS_prestations_type: p.OS_prestations_type || "",
       OS_devis_status:     p.OS_devis_status || "",
-      avancement:   denom > 0 ? Math.min(num / denom, 1) : 0,
-      total_ht:     denom,
-      total_prod:   num,
-      total_facture: 0, // supprimé car table indisponible
-      date_debut:   p.date_chantier || null,
-      date_fin:     p.date_fin_flexible || null,
-      is_archived:  p["is_archived?"] === true || p.is_archived === true,
+      avancement:    denom > 0 ? Math.min(num / denom, 1) : 0,
+      total_ht:      denom,
+      total_prod:    num,
+      total_facture: 0,
+      date_debut:    p.date_chantier || null,
+      date_fin:      p.date_fin_flexible || null,
+      is_archived,
     }];
   }));
 
-  // ── Map offers — filtre : non archivées ET date >= 24/02/2025 ─────────
+  // ── Map offers ─────────────────────────────────────────────────────────
+  // Filtre : projet non archivé ET date_offre >= 24/02/2025
   const DATE_MIN = "2025-02-24";
   const offers = rawOffers
     .filter(o => o._project_attached)
     .map(o => {
       const project    = projectsMap[o._project_attached] || null;
-      const is_archived = o["is_archived?"] === true || o.is_archived === true;
-      const date_offre  = o.date_offre
+      const date_offre = o.date_offre
         ? o.date_offre.slice(0, 10)
         : o["Created Date"]?.slice(0, 10);
       return {
-        id:              o._id,
-        offer_number:    o.devis_number || o.offer_number || o._id,
-        os_devis_statut: project?.OS_devis_status || "Saisie d'information",
+        id:                o._id,
+        offer_number:      o.devis_number || o.offer_number || o._id,
+        os_devis_statut:   project?.OS_devis_status || "Saisie d'information",
         date_offre,
-        date_validite:   o.date_validite ? o.date_validite.slice(0, 10) : null,
+        date_validite:     o.date_validite ? o.date_validite.slice(0, 10) : null,
         _project_attached: project,
-        montant_ht:      montantByOffer[o._id] || 0,
-        is_active:       o.is_active !== false,
-        is_archived,
+        montant_ht:        montantByOffer[o._id] || 0,
+        is_active:         o.is_active !== false,
+        is_archived:       project?.is_archived || false, // ← depuis le PROJET
       };
     })
-    .filter(o => !o.is_archived && (!o.date_offre || o.date_offre >= DATE_MIN));
+    .filter(o =>
+      !o.is_archived &&                                      // projet non archivé
+      (!o.date_offre || o.date_offre >= DATE_MIN)           // date >= 24/02/2025
+    );
 
   // ── Map interventions ──────────────────────────────────────────────────
   const interventions = rawInterventions.map(i => {
     const project = projectsMap[i._project_attached] || null;
     return {
-      id:               i._id,
-      name:             i.name || "Sans nom",
-      _project_attached: project,
-      date:             i.date ? i.date.slice(0, 10) : i["Created Date"]?.slice(0, 10),
-      OS_prestations_type:  i.OS_prestations_type || "",
-      intervention_status:  i.intervention_status || i.OS_project_intervention_status || "—",
+      id:                  i._id,
+      name:                i.name || "Sans nom",
+      _project_attached:   project,
+      date:                i.date ? i.date.slice(0, 10) : i["Created Date"]?.slice(0, 10),
+      OS_prestations_type: i.OS_prestations_type || "",
+      intervention_status: i.intervention_status || i.OS_project_intervention_status || "—",
       address: { city: extractCity(i.address) || project?.chantier_address?.city || "—" },
     };
   });
