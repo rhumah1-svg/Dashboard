@@ -82,7 +82,7 @@ const MOCK_INTERVENTIONS = [
 
 // ─── FETCH ────────────────────────────────────────────────────────────────────
 async function fetchAllPages(endpoint) {
-  let results=[], cursor=0;
+  let results = [], cursor = 0;
   const token = sessionStorage.getItem("qd_token");
   while (true) {
     const res = await fetch(`/api/bubble?table=${endpoint}&cursor=${cursor}`, {
@@ -99,92 +99,112 @@ async function fetchAllPages(endpoint) {
 
 function extractCity(a) {
   if (!a?.address) return null;
-  const p=a.address.split(",");
-  return p[0].trim().replace(/^\d{4,5}\s*/,"")||p[1]?.trim()||null;
+  const p = a.address.split(",");
+  return p[0].trim().replace(/^\d{4,5}\s*/, "") || p[1]?.trim() || null;
 }
 
 async function fetchAll() {
   if (USE_MOCK) {
-    const cm=Object.fromEntries(MOCK_COMPANIES.map(c=>[c.id,c]));
-    const pm=Object.fromEntries(MOCK_PROJECTS.map(p=>[p.id,{...p,_company_attached:cm[p._company_attached]}]));
+    const cm = Object.fromEntries(MOCK_COMPANIES.map(c => [c.id, c]));
+    const pm = Object.fromEntries(MOCK_PROJECTS.map(p => [p.id, { ...p, _company_attached: cm[p._company_attached] }]));
     return {
-      offers: MOCK_OFFERS.map(o=>({...o,_project_attached:pm[o._project_attached]})),
-      interventions: MOCK_INTERVENTIONS.map(i=>({...i,_project_attached:pm[i._project_attached]})),
+      offers: MOCK_OFFERS.map(o => ({ ...o, _project_attached: pm[o._project_attached] })),
+      interventions: MOCK_INTERVENTIONS.map(i => ({ ...i, _project_attached: pm[i._project_attached] })),
       projects: Object.values(pm),
     };
   }
-  const [rawOffers,rawProjects,rawInterventions,rawCompanies,rawItems,rawFactures] = await Promise.all([
+
+  // ── Fetch toutes les tables en parallèle (sans mois_facturable_projet) ──
+  const [rawOffers, rawProjects, rawInterventions, rawCompanies, rawItems] = await Promise.all([
     fetchAllPages("offers_history_documents"),
     fetchAllPages("projects"),
     fetchAllPages("interventions"),
     fetchAllPages("companies"),
     fetchAllPages("items_devis"),
-    fetchAllPages("mois_facturable_projet"),
   ]);
-  const companiesMap=Object.fromEntries(rawCompanies.map(c=>[c._id,c]));
 
-  const numByProject={}, denomByProject={}, montantByOffer={};
-  rawItems.forEach(item=>{
-    const pid=item._project_attached, oid=item.offer_document_item;
-    const ht=item["Total HT"]||item.Total_HT||item.total_ht||0;
-    const isI=item["intervention?"]===true||item.intervention===true||item.is_intervention===true;
-    if (oid) montantByOffer[oid]=(montantByOffer[oid]||0)+ht;
-    if (pid) { denomByProject[pid]=(denomByProject[pid]||0)+ht; if(isI) numByProject[pid]=(numByProject[pid]||0)+ht; }
+  // ── Map companies ──────────────────────────────────────────────────────
+  const companiesMap = Object.fromEntries(rawCompanies.map(c => [c._id, c]));
+
+  // ── Calcul montants par projet et par offre ────────────────────────────
+  const numByProject = {}, denomByProject = {}, montantByOffer = {};
+  rawItems.forEach(item => {
+    const pid = item._project_attached;
+    const oid = item.offer_document_item;
+    const ht  = item["Total HT"] || item.Total_HT || item.total_ht || 0;
+    const isI = item["intervention?"] === true || item.is_intervention === true;
+    if (oid) montantByOffer[oid] = (montantByOffer[oid] || 0) + ht;
+    if (pid) {
+      denomByProject[pid] = (denomByProject[pid] || 0) + ht;
+      if (isI) numByProject[pid] = (numByProject[pid] || 0) + ht;
+    }
   });
 
-  const facturesByProject = {};
-  rawFactures.forEach(f => {
-    const pid = f._project_attached || f.Projet;
-    const montant = f.total_reel_facturable || 0;
-    if (pid) facturesByProject[pid] = (facturesByProject[pid] || 0) + montant;
-  });
-
-  const projectsMap=Object.fromEntries(rawProjects.map(p=>{
-    const company=companiesMap[p._company_attached]||null;
-    const city=extractCity(p.chantier_address);
-    const num=numByProject[p._id]||0, denom=denomByProject[p._id]||0;
-    return [p._id,{
-      id:p._id, name:p.name||"", project_code:p.project_code||p._id,
-      _company_attached:company?{id:company._id,name:company.name}:{id:p._company_attached,name:"—"},
-      chantier_address:{city,state:city},
-      OS_prestations_type:p.OS_prestations_type||"",
-      OS_devis_status:p.OS_devis_status||"",
-      avancement:denom>0?Math.min(num/denom,1):0,
-      total_ht: denomByProject[p._id] || 0,
-      total_prod: numByProject[p._id] || 0,
-      total_facture: facturesByProject[p._id] || 0,
-      date_debut: p.date_chantier,
-      date_fin: p.date_fin_flexible,
-      is_archived: p.is_archived===true,
+  // ── Map projects ───────────────────────────────────────────────────────
+  const projectsMap = Object.fromEntries(rawProjects.map(p => {
+    const company = companiesMap[p._company_attached] || null;
+    const city    = extractCity(p.chantier_address);
+    const num     = numByProject[p._id] || 0;
+    const denom   = denomByProject[p._id] || 0;
+    return [p._id, {
+      id:               p._id,
+      name:             p.name || "",
+      project_code:     p.project_code || p._id,
+      _company_attached: company
+        ? { id: company._id, name: company.name }
+        : { id: p._company_attached, name: "—" },
+      chantier_address: { city, state: city },
+      OS_prestations_type: p.OS_prestations_type || "",
+      OS_devis_status:     p.OS_devis_status || "",
+      avancement:   denom > 0 ? Math.min(num / denom, 1) : 0,
+      total_ht:     denom,
+      total_prod:   num,
+      total_facture: 0, // supprimé car table indisponible
+      date_debut:   p.date_chantier || null,
+      date_fin:     p.date_fin_flexible || null,
+      is_archived:  p["is_archived?"] === true || p.is_archived === true,
     }];
   }));
 
-  const offers=rawOffers.filter(o=>o._project_attached).map(o=>{
-    const project=projectsMap[o._project_attached]||null;
+  // ── Map offers — filtre : non archivées ET date >= 24/02/2025 ─────────
+  const DATE_MIN = "2025-02-24";
+  const offers = rawOffers
+    .filter(o => o._project_attached)
+    .map(o => {
+      const project    = projectsMap[o._project_attached] || null;
+      const is_archived = o["is_archived?"] === true || o.is_archived === true;
+      const date_offre  = o.date_offre
+        ? o.date_offre.slice(0, 10)
+        : o["Created Date"]?.slice(0, 10);
+      return {
+        id:              o._id,
+        offer_number:    o.devis_number || o.offer_number || o._id,
+        os_devis_statut: project?.OS_devis_status || "Saisie d'information",
+        date_offre,
+        date_validite:   o.date_validite ? o.date_validite.slice(0, 10) : null,
+        _project_attached: project,
+        montant_ht:      montantByOffer[o._id] || 0,
+        is_active:       o.is_active !== false,
+        is_archived,
+      };
+    })
+    .filter(o => !o.is_archived && (!o.date_offre || o.date_offre >= DATE_MIN));
+
+  // ── Map interventions ──────────────────────────────────────────────────
+  const interventions = rawInterventions.map(i => {
+    const project = projectsMap[i._project_attached] || null;
     return {
-      id:o._id, offer_number:o.devis_number||o.offer_number||o._id,
-      os_devis_statut:project?.OS_devis_status||"Saisie d'information",
-      date_offre:o.date_offre?o.date_offre.slice(0,10):o["Created Date"]?.slice(0,10),
-      date_validite:o.date_validite?o.date_validite.slice(0,10):null,
-      _project_attached:project,
-      montant_ht:montantByOffer[o._id]||0,
-      is_active:o.is_active!==false,
-      is_archived:o.is_archived===true,
+      id:               i._id,
+      name:             i.name || "Sans nom",
+      _project_attached: project,
+      date:             i.date ? i.date.slice(0, 10) : i["Created Date"]?.slice(0, 10),
+      OS_prestations_type:  i.OS_prestations_type || "",
+      intervention_status:  i.intervention_status || i.OS_project_intervention_status || "—",
+      address: { city: extractCity(i.address) || project?.chantier_address?.city || "—" },
     };
   });
 
-  const interventions=rawInterventions.map(i=>{
-    const project=projectsMap[i._project_attached]||null;
-    return {
-      id:i._id, name:i.name||"Sans nom", _project_attached:project,
-      date:i.date?i.date.slice(0,10):i["Created Date"]?.slice(0,10),
-      OS_prestations_type:i.OS_prestations_type||"",
-      intervention_status:i.intervention_status||i.OS_project_intervention_status||"—",
-      address:{city:extractCity(i.address)||project?.chantier_address?.city||"—"},
-    };
-  });
-
-  return {offers, interventions, projects:Object.values(projectsMap)};
+  return { offers, interventions, projects: Object.values(projectsMap) };
 }
 
 // ─── THÈME ────────────────────────────────────────────────────────────────────
