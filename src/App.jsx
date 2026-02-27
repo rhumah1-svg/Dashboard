@@ -125,28 +125,26 @@ async function fetchAll() {
   // ── Map companies ──────────────────────────────────────────────────────
   const companiesMap = Object.fromEntries(rawCompanies.map(c => [c._id, c]));
 
-  // ── Calcul montants par projet et par offre ────────────────────────────
-  const numByProject = {}, denomByProject = {}, montantByOffer = {};
+  // ── Calcul montants par projet ─────────────────────────────────────────
+  // montant_ht  = somme Total HT de tous les items du projet
+  // avancement  = somme prix_intervention / somme Total HT
+  const numByProject = {}, denomByProject = {};
   rawItems.forEach(item => {
-    const pid = item._project_attached;
-    const oid = item.offer_document_item;
-    const ht  = item["Total HT"] || item.Total_HT || item.total_ht || 0;
-    const isI = item["intervention?"] === true || item.is_intervention === true;
-    if (oid) montantByOffer[oid] = (montantByOffer[oid] || 0) + ht;
+    const pid        = item._project_attached;
+    const ht         = item["Total HT"] || item.Total_HT || item.total_ht || 0;
+    const prix_interv = item.prix_intervention || item["prix intervention"] || 0;
     if (pid) {
       denomByProject[pid] = (denomByProject[pid] || 0) + ht;
-      if (isI) numByProject[pid] = (numByProject[pid] || 0) + ht;
+      numByProject[pid]   = (numByProject[pid]   || 0) + prix_interv;
     }
   });
 
   // ── Map projects ───────────────────────────────────────────────────────
-  // Le champ archived vient de la table projects dans Bubble
   const projectsMap = Object.fromEntries(rawProjects.map(p => {
-    const company = companiesMap[p._company_attached] || null;
-    const city    = extractCity(p.chantier_address);
-    const num     = numByProject[p._id] || 0;
-    const denom   = denomByProject[p._id] || 0;
-    // Tente tous les noms possibles du champ archived dans Bubble
+    const company     = companiesMap[p._company_attached] || null;
+    const city        = extractCity(p.chantier_address);
+    const num         = numByProject[p._id]   || 0;
+    const denom       = denomByProject[p._id] || 0;
     const is_archived = p["archived?"] === true;
     return [p._id, {
       id:               p._id,
@@ -169,7 +167,8 @@ async function fetchAll() {
   }));
 
   // ── Map offers ─────────────────────────────────────────────────────────
-  // Filtre : projet non archivé ET date_offre >= 24/02/2025
+  // montant_ht = total HT du projet lié (car offer_document_item non rempli)
+  // filtre     : projet non archivé ET date_offre >= 24/02/2025
   const DATE_MIN = "2025-02-24";
   const offers = rawOffers
     .filter(o => o._project_attached)
@@ -185,14 +184,14 @@ async function fetchAll() {
         date_offre,
         date_validite:     o.date_validite ? o.date_validite.slice(0, 10) : null,
         _project_attached: project,
-        montant_ht:        montantByOffer[o._id] || 0,
+        montant_ht:        denomByProject[o._project_attached] || 0, // ← par projet
         is_active:         o.is_active !== false,
-        is_archived:       project?.is_archived || false, // ← depuis le PROJET
+        is_archived:       project?.is_archived || false,
       };
     })
     .filter(o =>
-      !o.is_archived &&                                      // projet non archivé
-      (!o.date_offre || o.date_offre >= DATE_MIN)           // date >= 24/02/2025
+      !o.is_archived &&
+      (!o.date_offre || o.date_offre >= DATE_MIN)
     );
 
   // ── Map interventions ──────────────────────────────────────────────────
