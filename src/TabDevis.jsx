@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LineChart, Line, CartesianGrid, ReferenceLine } from "recharts";
 
 // ─── THÈME (importé depuis App) ───────────────────────────────────────────────
 const T = {
@@ -243,6 +243,27 @@ export default function TabDevis({offers,selectedCompany,onSelectCompany}){
   const hasFilters=search||filterStatuts.length||dateFrom||dateTo||selectedCompany;
   const hasPeriod=periodFrom||periodTo;
 
+  // Courbe évolution CA signé — 12 derniers mois glissants
+  const caParMois=useMemo(()=>{
+    const result=[];
+    for(let i=11;i>=0;i--){
+      const d=new Date(today.getFullYear(),today.getMonth()-i,1);
+      const moisKey=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+      const moisLabel=`${MOIS_FR[d.getMonth()].slice(0,3)} ${String(d.getFullYear()).slice(2)}`;
+      const moisOffers=offers.filter(o=>{
+        if(!o.date_offre) return false;
+        if(!STATUTS_SIGNES.includes(o.os_devis_statut)) return false;
+        return o.date_offre.slice(0,7)===moisKey;
+      });
+      result.push({
+        mois:moisLabel,
+        montant:moisOffers.reduce((s,o)=>s+(o.montant_ht||0),0),
+        count:moisOffers.length,
+      });
+    }
+    return result;
+  },[offers]);
+
   const fmtDate=d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
 
   return (
@@ -282,21 +303,42 @@ export default function TabDevis({offers,selectedCompany,onSelectCompany}){
         <KpiCard label="Expirent ≤7j"    value={expirent.length}     sub={expirent.length>0?"⚠ Action requise":"✓ Tout est ok"} color={expirent.length>0?T.rose:T.sage}/>
       </div>
 
-      {/* GRAPHIQUE + SYNTHÈSE STATUTS */}
+      {/* COURBE ÉVOLUTION + SYNTHÈSE STATUTS */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:14,marginBottom:20}}>
-        <Card title="Répartition par statut" badge={<PeriodTag on={hasPeriod}/>}>
+        <Card title="Évolution CA signé — 12 derniers mois">
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byStatut} margin={{top:4,right:4,left:0,bottom:28}} barSize={18}>
-              <XAxis dataKey="s" tick={{fontSize:9,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} angle={-25} textAnchor="end" interval={0}/>
+            <LineChart data={caParMois} margin={{top:8,right:16,left:0,bottom:4}}>
+              <CartesianGrid strokeDasharray="3 3" stroke={T.border} vertical={false}/>
+              <XAxis dataKey="mois" tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false}/>
               <YAxis tickFormatter={fmtK} tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} width={46}/>
-              <Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text}}
-                formatter={(v,_,p)=>[`${fmt(v)} · ${p.payload.count} devis`]}
-                labelFormatter={(_,p)=>p[0]?.payload?.full||""}/>
-              <Bar dataKey="montant" radius={[4,4,0,0]}>
-                {byStatut.map(e=><Cell key={e.full} fill={S_COLOR[e.full]||T.textSoft} opacity={e.count===0?0.2:0.85}/>)}
-              </Bar>
-            </BarChart>
+              <Tooltip
+                contentStyle={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text}}
+                formatter={(v,_,p)=>[`${fmt(v)} · ${p.payload.count} devis signé${p.payload.count>1?"s":""}`]}
+                labelFormatter={l=>l}
+              />
+              <ReferenceLine x={MOIS_FR[today.getMonth()].slice(0,3)} stroke={T.amber} strokeDasharray="4 2" strokeWidth={1.5}/>
+              <Line
+                type="monotone" dataKey="montant" stroke={T.sage} strokeWidth={2.5}
+                dot={(props)=>{
+                  const {cx,cy,payload}=props;
+                  if(payload.montant===0) return <circle key={props.key} cx={cx} cy={cy} r={3} fill={T.border}/>;
+                  return <circle key={props.key} cx={cx} cy={cy} r={4} fill={T.sage} stroke="#fff" strokeWidth={2}/>;
+                }}
+                activeDot={{r:6,fill:T.sage,stroke:"#fff",strokeWidth:2}}
+              />
+            </LineChart>
           </ResponsiveContainer>
+          <div style={{display:"flex",gap:16,marginTop:8,paddingTop:8,borderTop:`1px solid ${T.border}`}}>
+            <div style={{fontSize:11,color:T.textSoft}}>
+              <span style={{fontWeight:700,color:T.sage}}>{fmt(caParMois.reduce((s,m)=>s+m.montant,0))}</span> · total 12 mois
+            </div>
+            <div style={{fontSize:11,color:T.textSoft}}>
+              <span style={{fontWeight:700,color:T.text}}>{caParMois.reduce((s,m)=>s+m.count,0)}</span> devis signés
+            </div>
+            <div style={{fontSize:11,color:T.textSoft,marginLeft:"auto"}}>
+              Mois le + fort : <span style={{fontWeight:700,color:T.indigo}}>{caParMois.reduce((best,m)=>m.montant>best.montant?m:best,{montant:0,mois:"—"}).mois}</span>
+            </div>
+          </div>
         </Card>
 
         <Card title="Synthèse par statut" badge={<PeriodTag on={hasPeriod}/>}>
