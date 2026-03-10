@@ -32,6 +32,18 @@ const fmtK    = n => n>=1000000?`${(n/1000000).toFixed(1)}M€`:n>=1000?`${Math.
 const diffDays= d => d?Math.ceil((new Date(d)-new Date())/86400000):null;
 const inRange  = (d,from,to) => { if(!from&&!to)return true; if(from&&d<from)return false; if(to&&d>to)return false; return true; };
 
+// Helpers période
+const today = new Date();
+const getMonthRange = () => {
+  const f = new Date(today.getFullYear(), today.getMonth(), 1);
+  const t = new Date(today.getFullYear(), today.getMonth()+1, 0);
+  return [f.toISOString().slice(0,10), t.toISOString().slice(0,10)];
+};
+const getYearRange = () => {
+  return [`${today.getFullYear()}-01-01`, `${today.getFullYear()}-12-31`];
+};
+const MOIS_FR = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
+
 // ─── COMPOSANTS UI LOCAUX ─────────────────────────────────────────────────────
 function KpiCard({label,value,sub,color,pct=0}){
   return (
@@ -135,8 +147,10 @@ function PeriodTag({on}){
 
 // ─── ONGLET DEVIS ─────────────────────────────────────────────────────────────
 export default function TabDevis({offers,selectedCompany,onSelectCompany}){
-  const [periodFrom,setPeriodFrom]=useState("");
-  const [periodTo,setPeriodTo]=useState("");
+  const [mR,aR]=[getMonthRange(),getYearRange()];
+  const [periodFrom,setPeriodFrom]=useState(mR[0]);
+  const [periodTo,setPeriodTo]=useState(mR[1]);
+  const [quickPeriod,setQuickPeriod]=useState("mois"); // "mois" | "annee" | "tout" | "custom"
   const [search,setSearch]=useState("");
   const [filterStatuts,setFilterStatuts]=useState([]);
   const [dateFrom,setDateFrom]=useState("");
@@ -146,6 +160,20 @@ export default function TabDevis({offers,selectedCompany,onSelectCompany}){
   const [showArchived,setShowArchived]=useState(false);
 
   const handleSort=k=>{if(sortBy===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortBy(k);setSortDir("desc");}};
+
+  const handleQuickPeriod=mode=>{
+    setQuickPeriod(mode);
+    if(mode==="mois"){const[f,t]=getMonthRange();setPeriodFrom(f);setPeriodTo(t);}
+    else if(mode==="annee"){const[f,t]=getYearRange();setPeriodFrom(f);setPeriodTo(t);}
+    else if(mode==="tout"){setPeriodFrom("");setPeriodTo("");}
+  };
+
+  // Label période active
+  const periodLabel = quickPeriod==="mois"
+    ? `${MOIS_FR[today.getMonth()]} ${today.getFullYear()}`
+    : quickPeriod==="annee" ? `Année ${today.getFullYear()}`
+    : quickPeriod==="tout" ? "Toutes périodes"
+    : "Période personnalisée";
 
   const offersInPeriod=useMemo(()=>offers.filter(o=>inRange(o.date_offre,periodFrom,periodTo)),[offers,periodFrom,periodTo]);
 
@@ -205,11 +233,12 @@ export default function TabDevis({offers,selectedCompany,onSelectCompany}){
     color:S_COLOR[s]||T.textSoft,
   })).filter(d=>d.count>0);
 
+  // Tous les statuts affichés même si montant=0, triés par count desc
   const byStatut=STATUT_DEVIS.map(s=>({
-    s:s.length>13?s.slice(0,13)+"…":s,full:s,
+    s:s.length>11?s.slice(0,11)+"…":s, full:s,
     count:offersInPeriod.filter(o=>o.os_devis_statut===s).length,
     montant:offersInPeriod.filter(o=>o.os_devis_statut===s).reduce((sum,o)=>sum+(o.montant_ht||0),0),
-  })).filter(d=>d.count>0);
+  }));
 
   const hasFilters=search||filterStatuts.length||dateFrom||dateTo||selectedCompany;
   const hasPeriod=periodFrom||periodTo;
@@ -219,10 +248,26 @@ export default function TabDevis({offers,selectedCompany,onSelectCompany}){
   return (
     <div>
       {/* BARRE PÉRIODE KPIs */}
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"10px 16px",background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:18,padding:"10px 16px",background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)",flexWrap:"wrap"}}>
         <span style={{fontSize:12,color:T.textMed,fontWeight:700}}>📅 Période KPIs</span>
-        <DateRange dateFrom={periodFrom} dateTo={periodTo} onChange={(f,t)=>{setPeriodFrom(f);setPeriodTo(t);}}/>
-        <span style={{fontSize:12,color:hasPeriod?T.indigo:T.textSoft}}>{hasPeriod?`${offersInPeriod.length} devis dans la période`:"Toutes les périodes"}</span>
+        {/* Boutons rapides */}
+        <div style={{display:"flex",borderRadius:8,overflow:"hidden",border:`1.5px solid ${T.border}`}}>
+          {[["mois","Mois"],["annee","Année"],["tout","Tout"]].map(([mode,label])=>(
+            <button key={mode} onClick={()=>handleQuickPeriod(mode)} style={{
+              padding:"6px 14px",fontSize:12,fontWeight:700,cursor:"pointer",border:"none",
+              borderRight:`1px solid ${T.border}`,
+              background:quickPeriod===mode?T.indigo:"transparent",
+              color:quickPeriod===mode?"#fff":T.textMed,
+              transition:"all 0.15s",
+            }}>{label}</button>
+          ))}
+        </div>
+        {/* Date custom */}
+        <DateRange dateFrom={quickPeriod==="custom"?periodFrom:""} dateTo={quickPeriod==="custom"?periodTo:""} onChange={(f,t)=>{setQuickPeriod("custom");setPeriodFrom(f);setPeriodTo(t);}}/>
+        {/* Label période active */}
+        <span style={{fontSize:12,color:T.indigo,fontWeight:600,background:T.indigoL,padding:"4px 10px",borderRadius:20,border:`1px solid ${T.indigo}30`}}>
+          {periodLabel} · {offersInPeriod.length} devis
+        </span>
       </div>
 
       {/* KPI CARDS — 6 cartes sur 2 lignes */}
@@ -239,14 +284,16 @@ export default function TabDevis({offers,selectedCompany,onSelectCompany}){
 
       {/* GRAPHIQUE + SYNTHÈSE STATUTS */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:14,marginBottom:20}}>
-        <Card title="Répartition CA par statut" badge={<PeriodTag on={hasPeriod}/>}>
+        <Card title="Répartition par statut" badge={<PeriodTag on={hasPeriod}/>}>
           <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byStatut} margin={{top:4,right:4,left:0,bottom:24}}>
-              <XAxis dataKey="s" tick={{fontSize:9,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} angle={-20} textAnchor="end"/>
+            <BarChart data={byStatut} margin={{top:4,right:4,left:0,bottom:28}} barSize={18}>
+              <XAxis dataKey="s" tick={{fontSize:9,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} angle={-25} textAnchor="end" interval={0}/>
               <YAxis tickFormatter={fmtK} tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} width={46}/>
-              <Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text}} formatter={(v,_,p)=>[fmt(v),`${p.payload.count} devis`]} labelFormatter={(_,p)=>p[0]?.payload?.full||""}/>
-              <Bar dataKey="montant" radius={[5,5,0,0]}>
-                {byStatut.map(e=><Cell key={e.full} fill={S_COLOR[e.full]||T.textSoft} opacity={0.85}/>)}
+              <Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text}}
+                formatter={(v,_,p)=>[`${fmt(v)} · ${p.payload.count} devis`]}
+                labelFormatter={(_,p)=>p[0]?.payload?.full||""}/>
+              <Bar dataKey="montant" radius={[4,4,0,0]}>
+                {byStatut.map(e=><Cell key={e.full} fill={S_COLOR[e.full]||T.textSoft} opacity={e.count===0?0.2:0.85}/>)}
               </Bar>
             </BarChart>
           </ResponsiveContainer>
