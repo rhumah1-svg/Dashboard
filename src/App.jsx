@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo, useRef, Component } from "react";
 import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import FicheClient from './FicheClient';
 import Login from './Login';
 import TableContacts from './TableContacts';
 import SuiviFacturable from './SuiviFacturable';
+import TabDevis from './TabDevis';
+import TabInterventions from './TabInterventions';
 
 // ─── ERROR BOUNDARY ───────────────────────────────────────────────────────────
 class ErrorBoundary extends Component {
@@ -36,7 +37,6 @@ class ErrorBoundary extends Component {
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 const USE_MOCK = false;
-const DASH_SECRET = "qd_x9k2m7p4nz3";
 
 // ─── MOCK DATA ────────────────────────────────────────────────────────────────
 const MOCK_COMPANIES = [
@@ -122,16 +122,12 @@ async function fetchAll() {
     fetchAllPages("items_devis"),
   ]);
 
-  // ── Map companies ──────────────────────────────────────────────────────
   const companiesMap = Object.fromEntries(rawCompanies.map(c => [c._id, c]));
 
-  // ── Calcul montants par projet ─────────────────────────────────────────
-  // montant_ht  = somme Total HT de tous les items du projet
-  // avancement  = somme prix_intervention / somme Total HT
   const numByProject = {}, denomByProject = {};
   rawItems.forEach(item => {
-    const pid        = item._project_attached;
-    const ht         = item["Total HT"] || item.Total_HT || item.total_ht || 0;
+    const pid         = item._project_attached;
+    const ht          = item["Total HT"] || item.Total_HT || item.total_ht || 0;
     const prix_interv = item.prix_intervention || item["prix intervention"] || 0;
     if (pid) {
       denomByProject[pid] = (denomByProject[pid] || 0) + ht;
@@ -139,7 +135,6 @@ async function fetchAll() {
     }
   });
 
-  // ── Map projects ───────────────────────────────────────────────────────
   const projectsMap = Object.fromEntries(rawProjects.map(p => {
     const company     = companiesMap[p._company_attached] || null;
     const city        = extractCity(p.chantier_address);
@@ -159,16 +154,13 @@ async function fetchAll() {
       avancement:    denom > 0 ? Math.min(num / denom, 1) : 0,
       total_ht:      denom,
       total_prod:    num,
-      total_facture: 0,
+      total_facture: p.total_facture || p["montant_facture"] || 0,
       date_debut:    p.date_chantier || null,
       date_fin:      p.date_fin_flexible || null,
       is_archived,
     }];
   }));
 
-  // ── Map offers ─────────────────────────────────────────────────────────
-  // montant_ht = total HT du projet lié (car offer_document_item non rempli)
-  // filtre     : projet non archivé ET date_offre >= 24/02/2025
   const DATE_MIN = "2025-02-24";
   const offers = rawOffers
     .filter(o => o._project_attached)
@@ -184,7 +176,7 @@ async function fetchAll() {
         date_offre,
         date_validite:     o.date_validite ? o.date_validite.slice(0, 10) : null,
         _project_attached: project,
-        montant_ht:        denomByProject[o._project_attached] || 0, // ← par projet
+        montant_ht:        denomByProject[o._project_attached] || 0,
         is_active:         o.is_active !== false,
         is_archived:       project?.is_archived || false,
       };
@@ -194,7 +186,6 @@ async function fetchAll() {
       (!o.date_offre || o.date_offre >= DATE_MIN)
     );
 
-  // ── Map interventions ──────────────────────────────────────────────────
   const interventions = rawInterventions.map(i => {
     const project = projectsMap[i._project_attached] || null;
     return {
@@ -225,508 +216,6 @@ const T = {
   sky:"#3E8EBF",    skyL:"#E5F3FA",
   coral:"#C9614A",  coralL:"#FAEAE6",
 };
-
-const STATUT_DEVIS=["Saisie d'information","Chiffrage en cours","Validé par l'administration","Devis envoyé","Devis signé","Projet terminé","A relancer","Relance envoyée","Classé sans suite","Non formalisé"];
-const STATUT_INTERV=["Planifié","En cours","Terminé","Annulé"];
-const STATUTS_SIGNES=["Devis signé","Projet terminé"];
-const STATUTS_PIPELINE=["Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée"];
-// Statuts affichés dans la synthèse (hors Classé sans suite & Non formalisé)
-const STATUTS_ACTIFS_SYNTHESE=["Saisie d'information","Chiffrage en cours","Validé par l'administration","Devis envoyé","A relancer","Relance envoyée","Devis signé","Projet terminé"];
-
-const S_COLOR={
-  "Saisie d'information":T.textSoft,"Chiffrage en cours":T.sky,"Validé par l'administration":T.violet,
-  "Devis envoyé":T.indigo,"Devis signé":T.sage,"Projet terminé":"#2E7A4E",
-  "A relancer":T.amber,"Relance envoyée":T.coral,"Classé sans suite":T.rose,"Non formalisé":T.textSoft,
-  "Planifié":T.violet,"En cours":T.amber,"Terminé":T.sage,"Annulé":T.rose,
-};
-const CHART_COLORS=[T.indigo,T.teal,T.sage,T.amber,T.rose,T.violet,T.sky,T.coral,"#7BAA4E"];
-const fmt     =n=>new Intl.NumberFormat("fr-FR",{style:"currency",currency:"EUR",maximumFractionDigits:0}).format(n||0);
-const fmtK    =n=>n>=1000000?`${(n/1000000).toFixed(1)}M€`:n>=1000?`${Math.round(n/1000)}k€`:`${n}€`;
-const fmtDate =d=>d?new Date(d).toLocaleDateString("fr-FR"):"—";
-const diffDays=d=>d?Math.ceil((new Date(d)-new Date())/86400000):null;
-const inRange =(d,from,to)=>{if(!from&&!to)return true;if(from&&d<from)return false;if(to&&d>to)return false;return true;};
-
-// ─── COMPOSANTS UI PARTAGÉS ───────────────────────────────────────────────────
-function KpiCard({label,value,sub,color,pct=0}){
-  return (
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,padding:"20px 22px",boxShadow:"0 2px 6px rgba(0,0,0,0.05)",borderLeft:`4px solid ${color}`}}>
-      <div style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.08em",marginBottom:8}}>{label}</div>
-      <div style={{fontSize:24,fontWeight:800,color,marginBottom:4,lineHeight:1}}>{value}</div>
-      <div style={{fontSize:11,color:T.textMed,marginBottom:12}}>{sub}</div>
-      <div style={{height:4,background:T.border,borderRadius:2}}>
-        <div style={{height:4,background:color,width:`${Math.min(pct,100)}%`,borderRadius:2,transition:"width 0.6s"}}/>
-      </div>
-    </div>
-  );
-}
-
-function Badge({label,color}){
-  const c=color||S_COLOR[label]||T.textSoft;
-  return <span style={{fontSize:11,fontWeight:600,padding:"3px 9px",borderRadius:20,color:c,background:`${c}18`,border:`1px solid ${c}30`,whiteSpace:"nowrap"}}>{label}</span>;
-}
-
-function SearchInput({value,onChange,placeholder}){
-  return (
-    <div style={{position:"relative",flex:1,minWidth:200}}>
-      <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",fontSize:13,color:T.textSoft,pointerEvents:"none"}}>🔍</span>
-      <input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder||"Rechercher…"}
-        style={{width:"100%",padding:"7px 10px 7px 30px",border:`1.5px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text,background:T.bg,outline:"none",boxSizing:"border-box"}}/>
-    </div>
-  );
-}
-
-function MultiSelect({label,options,selected,onChange,colorMap}){
-  const [open,setOpen]=useState(false);
-  const ref=useRef();
-  useEffect(()=>{
-    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
-    document.addEventListener("mousedown",h);return()=>document.removeEventListener("mousedown",h);
-  },[]);
-  const toggle=v=>onChange(selected.includes(v)?selected.filter(x=>x!==v):[...selected,v]);
-  return (
-    <div ref={ref} style={{position:"relative"}}>
-      <button onClick={()=>setOpen(o=>!o)}
-        style={{padding:"7px 12px",border:`1.5px solid ${selected.length?T.indigo:T.border}`,borderRadius:8,background:selected.length?T.indigoL:T.bg,color:selected.length?T.indigo:T.textMed,fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-        {label}{selected.length>0&&<span style={{background:T.indigo,color:"#fff",borderRadius:10,padding:"1px 6px",fontSize:10}}>{selected.length}</span>}
-        <span style={{fontSize:9,opacity:0.6}}>{open?"▲":"▼"}</span>
-      </button>
-      {open&&(
-        <div style={{position:"absolute",top:"calc(100% + 4px)",left:0,zIndex:200,background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 8px 24px rgba(0,0,0,0.12)",minWidth:220,padding:6}}>
-          {options.map(o=>{
-            const active=selected.includes(o);
-            const c=colorMap?.[o]||T.textSoft;
-            return (
-              <div key={o} onClick={()=>toggle(o)}
-                style={{padding:"7px 10px",borderRadius:7,cursor:"pointer",display:"flex",alignItems:"center",gap:8,background:active?`${c}12`:"transparent"}}>
-                <div style={{width:8,height:8,borderRadius:"50%",background:c,flexShrink:0}}/>
-                <span style={{fontSize:12,color:active?c:T.text,fontWeight:active?700:400,flex:1}}>{o}</span>
-                {active&&<span style={{fontSize:10,color:c}}>✓</span>}
-              </div>
-            );
-          })}
-          {selected.length>0&&<div onClick={()=>onChange([])} style={{padding:"6px 10px",borderTop:`1px solid ${T.border}`,marginTop:4,fontSize:11,color:T.rose,cursor:"pointer",textAlign:"center",fontWeight:600}}>Tout effacer</div>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DateRange({dateFrom,dateTo,onChange}){
-  const active=dateFrom||dateTo;
-  const inp={border:"none",background:"transparent",fontSize:12,color:T.text,outline:"none",width:110,cursor:"pointer"};
-  return (
-    <div style={{display:"flex",alignItems:"center",gap:6,padding:"6px 10px",border:`1.5px solid ${active?T.indigo:T.border}`,borderRadius:8,background:active?T.indigoL:T.card}}>
-      <span style={{fontSize:11,color:active?T.indigo:T.textSoft,fontWeight:600}}>Du</span>
-      <input type="date" value={dateFrom||""} onChange={e=>onChange(e.target.value,dateTo)} style={inp}/>
-      <span style={{fontSize:11,color:active?T.indigo:T.textSoft,fontWeight:600}}>au</span>
-      <input type="date" value={dateTo||""} onChange={e=>onChange(dateFrom,e.target.value)} min={dateFrom||undefined} style={inp}/>
-      {active&&<span onClick={()=>onChange("","")} style={{cursor:"pointer",fontSize:15,color:T.textSoft}}>×</span>}
-    </div>
-  );
-}
-
-function ColHeader({label,sortKey,sortBy,sortDir,onSort}){
-  const active=sortBy===sortKey;
-  return (
-    <span onClick={()=>onSort(sortKey)} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:3,userSelect:"none",color:active?T.indigo:T.textSoft,fontWeight:active?700:600,fontSize:11}}>
-      {label}<span style={{fontSize:8,opacity:active?1:0.4}}>{active&&sortDir==="asc"?"▲":"▼"}</span>
-    </span>
-  );
-}
-
-function Card({title,children,badge}){
-  return (
-    <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,padding:20,boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-        <div style={{fontSize:11,color:T.textMed,fontWeight:700,letterSpacing:"0.06em",textTransform:"uppercase"}}>{title}</div>
-        {badge}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function PeriodTag({on}){
-  if(!on) return null;
-  return <span style={{fontSize:10,color:T.indigo,background:T.indigoL,border:`1px solid ${T.indigo}30`,borderRadius:20,padding:"2px 8px",fontWeight:600}}>période filtrée</span>;
-}
-
-// ─── ONGLET DEVIS ─────────────────────────────────────────────────────────────
-function TabDevis({offers,selectedCompany,onSelectCompany}){
-  const [periodFrom,setPeriodFrom]=useState("");
-  const [periodTo,setPeriodTo]=useState("");
-  const [search,setSearch]=useState("");
-  const [filterStatuts,setFilterStatuts]=useState([]);
-  const [dateFrom,setDateFrom]=useState("");
-  const [dateTo,setDateTo]=useState("");
-  const [sortBy,setSortBy]=useState("date_offre");
-  const [sortDir,setSortDir]=useState("desc");
-  const [showArchived,setShowArchived]=useState(false); // ← NOUVEAU
-
-  const handleSort=k=>{if(sortBy===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortBy(k);setSortDir("desc");}};
-
-  const offersInPeriod=useMemo(()=>offers.filter(o=>inRange(o.date_offre,periodFrom,periodTo)),[offers,periodFrom,periodTo]);
-
-  // ← CORRECTION : filtre is_archived par défaut
-  const filtered=useMemo(()=>{
-    let rows=offers.filter(o=>showArchived?true:!o.is_archived);
-    if(search.trim()){const q=search.toLowerCase();rows=rows.filter(o=>o._project_attached?.name?.toLowerCase().includes(q)||o._project_attached?._company_attached?.name?.toLowerCase().includes(q)||o.offer_number?.toLowerCase().includes(q));}
-    if(filterStatuts.length)rows=rows.filter(o=>filterStatuts.includes(o.os_devis_statut));
-    if(dateFrom)rows=rows.filter(o=>o.date_offre&&o.date_offre>=dateFrom);
-    if(dateTo)rows=rows.filter(o=>o.date_offre&&o.date_offre<=dateTo);
-    if(selectedCompany)rows=rows.filter(o=>o._project_attached?._company_attached?.id===selectedCompany);
-    return [...rows].sort((a,b)=>{
-      let va,vb;
-      if(sortBy==="montant_ht"){va=a.montant_ht||0;vb=b.montant_ht||0;}
-      else if(sortBy==="client"){va=a._project_attached?._company_attached?.name||"";vb=b._project_attached?._company_attached?.name||"";}
-      else if(sortBy==="projet"){va=a._project_attached?.name||"";vb=b._project_attached?.name||"";}
-      else if(sortBy==="expiration"){va=new Date(a.date_validite||0);vb=new Date(b.date_validite||0);}
-      else if(sortBy==="avancement"){va=a._project_attached?.avancement||0;vb=b._project_attached?.avancement||0;}
-      else{va=new Date(a.date_offre||0);vb=new Date(b.date_offre||0);}
-      if(va<vb)return sortDir==="asc"?-1:1;if(va>vb)return sortDir==="asc"?1:-1;return 0;
-    });
-  },[offers,search,filterStatuts,dateFrom,dateTo,selectedCompany,sortBy,sortDir,showArchived]);
-
-  const active=offersInPeriod.filter(o=>o.is_active&&!o.is_archived);
-  const signe=active.filter(o=>STATUTS_SIGNES.includes(o.os_devis_statut));
-  const pipeline=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut));
-  const caSigne=signe.reduce((s,o)=>s+(o.montant_ht||0),0);
-  const caPipeline=pipeline.reduce((s,o)=>s+(o.montant_ht||0),0);
-
-  // ← CORRECTION taux de conversion : Signés / tous sauf Classé sans suite + Non formalisé
-  // (inclut Saisie d'information car on peut passer directement Saisie → Terminé)
-  const dansLaCourse=active.filter(o=>o.os_devis_statut!=="Classé sans suite"&&o.os_devis_statut!=="Non formalisé");
-  const tauxConv=dansLaCourse.length?Math.round((signe.length/dansLaCourse.length)*100):0;
-
-  const expirent=active.filter(o=>STATUTS_PIPELINE.includes(o.os_devis_statut))
-    .map(o=>({...o,daysLeft:diffDays(o.date_validite)}))
-    .filter(o=>o.daysLeft!==null&&o.daysLeft<=7).sort((a,b)=>a.daysLeft-b.daysLeft);
-  const totalFiltre=filtered.reduce((s,o)=>s+(o.montant_ht||0),0);
-
-  // ← NOUVEAU : synthèse par statut (remplace topClients)
-  const byStatutActif=STATUTS_ACTIFS_SYNTHESE.map(s=>({
-    s,
-    count:offersInPeriod.filter(o=>!o.is_archived&&o.os_devis_statut===s).length,
-    montant:offersInPeriod.filter(o=>!o.is_archived&&o.os_devis_statut===s).reduce((sum,o)=>sum+(o.montant_ht||0),0),
-    color:S_COLOR[s]||T.textSoft,
-  })).filter(d=>d.count>0);
-
-  const byStatut=STATUT_DEVIS.map(s=>({
-    s:s.length>13?s.slice(0,13)+"…":s,full:s,
-    count:offersInPeriod.filter(o=>o.os_devis_statut===s).length,
-    montant:offersInPeriod.filter(o=>o.os_devis_statut===s).reduce((sum,o)=>sum+(o.montant_ht||0),0),
-  })).filter(d=>d.count>0);
-
-  const hasFilters=search||filterStatuts.length||dateFrom||dateTo||selectedCompany;
-  const hasPeriod=periodFrom||periodTo;
-
-  return (
-    <div>
-      {/* BARRE PÉRIODE KPIs */}
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"10px 16px",background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
-        <span style={{fontSize:12,color:T.textMed,fontWeight:700}}>📅 Période KPIs</span>
-        <DateRange dateFrom={periodFrom} dateTo={periodTo} onChange={(f,t)=>{setPeriodFrom(f);setPeriodTo(t);}}/>
-        <span style={{fontSize:12,color:hasPeriod?T.indigo:T.textSoft}}>{hasPeriod?`${offersInPeriod.length} devis dans la période`:"Toutes les périodes"}</span>
-      </div>
-
-      {/* KPI CARDS */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
-        <KpiCard label="CA Signé"        value={fmt(caSigne)}    sub={`${signe.length} devis signés`}       color={T.sage}   pct={(caSigne/(caSigne+caPipeline+1))*100}/>
-        <KpiCard label="CA Pipeline"     value={fmt(caPipeline)} sub={`${pipeline.length} en cours`}        color={T.indigo} pct={(caPipeline/(caSigne+caPipeline+1))*100}/>
-        <KpiCard label="Taux conversion" value={`${tauxConv}%`}  sub={`sur ${dansLaCourse.length} actifs`}  color={T.violet} pct={tauxConv}/>
-        <KpiCard label="Expirent ≤7j"    value={expirent.length} sub={expirent.length>0?"⚠ Action requise":"✓ Tout est ok"} color={expirent.length>0?T.rose:T.sage}/>
-      </div>
-
-      {/* GRAPHIQUE + SYNTHÈSE STATUTS */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:14,marginBottom:20}}>
-        <Card title="Répartition CA par statut" badge={<PeriodTag on={hasPeriod}/>}>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={byStatut} margin={{top:4,right:4,left:0,bottom:24}}>
-              <XAxis dataKey="s" tick={{fontSize:9,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} angle={-20} textAnchor="end"/>
-              <YAxis tickFormatter={fmtK} tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} width={46}/>
-              <Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,borderRadius:8,fontSize:12,color:T.text}} formatter={(v,_,p)=>[fmt(v),`${p.payload.count} devis`]} labelFormatter={(_,p)=>p[0]?.payload?.full||""}/>
-              <Bar dataKey="montant" radius={[5,5,0,0]}>
-                {byStatut.map(e=><Cell key={e.full} fill={S_COLOR[e.full]||T.textSoft} opacity={0.85}/>)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        {/* ← NOUVEAU BLOC : Synthèse par statut (remplace Top clients) */}
-        <Card title="Synthèse par statut" badge={<PeriodTag on={hasPeriod}/>}>
-          <div style={{display:"flex",flexDirection:"column",gap:5}}>
-            {byStatutActif.length===0
-              ?<div style={{fontSize:12,color:T.textSoft,textAlign:"center",padding:"16px 0"}}>Aucun devis dans la période</div>
-              :byStatutActif.map(d=>{
-                const isActive=filterStatuts.includes(d.s);
-                return (
-                  <div key={d.s}
-                    onClick={()=>setFilterStatuts(prev=>prev.includes(d.s)?prev.filter(x=>x!==d.s):[...prev,d.s])}
-                    style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",borderRadius:8,cursor:"pointer",
-                      background:isActive?`${d.color}15`:T.cardAlt,
-                      border:`1.5px solid ${isActive?d.color:T.border}`,
-                      transition:"all 0.15s"}}
-                    onMouseEnter={e=>e.currentTarget.style.background=`${d.color}10`}
-                    onMouseLeave={e=>e.currentTarget.style.background=isActive?`${d.color}15`:T.cardAlt}>
-                    <div style={{width:9,height:9,borderRadius:"50%",background:d.color,flexShrink:0}}/>
-                    <span style={{flex:1,fontSize:12,color:T.text,fontWeight:isActive?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.s}</span>
-                    <span style={{fontSize:13,fontWeight:700,color:d.color,flexShrink:0,minWidth:20,textAlign:"right"}}>{d.count}</span>
-                    <span style={{fontSize:11,color:T.textSoft,flexShrink:0,minWidth:55,textAlign:"right"}}>{d.montant>0?fmtK(d.montant):""}</span>
-                  </div>
-                );
-              })
-            }
-          </div>
-          {filterStatuts.length>0&&(
-            <button onClick={()=>setFilterStatuts([])}
-              style={{marginTop:10,width:"100%",padding:"6px 0",fontSize:11,color:T.rose,background:T.roseL,border:`1px solid ${T.rose}30`,borderRadius:7,cursor:"pointer",fontWeight:600}}>
-              ✕ Réinitialiser les filtres statut
-            </button>
-          )}
-          {expirent.length>0&&(
-            <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${T.border}`}}>
-              <div style={{fontSize:11,color:T.rose,fontWeight:700,textTransform:"uppercase",marginBottom:8}}>⚠ Expirations urgentes</div>
-              {expirent.slice(0,4).map(o=>{
-                const d=o.daysLeft;const col=d<=0?T.rose:T.amber;
-                return(
-                  <div key={o.id} style={{display:"flex",justifyContent:"space-between",padding:"5px 0",borderBottom:`1px solid ${T.border}`}}>
-                    <div style={{fontSize:11,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{o._project_attached?._company_attached?.name} — {o._project_attached?.name}</div>
-                    <div style={{fontSize:12,fontWeight:700,color:col,flexShrink:0}}>{d<=0?"Expiré":`J-${d}`}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-      </div>
-
-      {/* TABLEAU */}
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
-        <div style={{padding:"16px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:T.cardAlt}}>
-          <SearchInput value={search} onChange={setSearch} placeholder="Projet, entreprise, référence…"/>
-          <MultiSelect label="Statut" options={STATUT_DEVIS} selected={filterStatuts} onChange={setFilterStatuts} colorMap={S_COLOR}/>
-          <DateRange dateFrom={dateFrom} dateTo={dateTo} onChange={(f,t)=>{setDateFrom(f);setDateTo(t);}}/>
-          {hasFilters&&<button onClick={()=>{setSearch("");setFilterStatuts([]);setDateFrom("");setDateTo("");onSelectCompany(null);}} style={{cursor:"pointer",padding:"7px 13px",background:T.indigoL,border:`1px solid ${T.indigo}44`,borderRadius:8,color:T.indigo,fontSize:12,fontWeight:600}}>Réinitialiser</button>}
-
-          {/* ← NOUVEAU : toggle archivés */}
-          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:T.textMed,cursor:"pointer",userSelect:"none",padding:"6px 10px",borderRadius:8,border:`1.5px solid ${showArchived?T.amber:T.border}`,background:showArchived?T.amberL:T.bg}}>
-            <input type="checkbox" checked={showArchived} onChange={e=>setShowArchived(e.target.checked)} style={{accentColor:T.amber,cursor:"pointer"}}/>
-            Archivés
-          </label>
-
-          <span style={{marginLeft:"auto",fontSize:12,color:T.textSoft,fontWeight:600}}>{filtered.length} résultat{filtered.length>1?"s":""}</span>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"150px 1fr 150px 165px 105px 130px 72px",gap:8,padding:"10px 20px",background:T.cardAlt,borderBottom:`2px solid ${T.border}`}}>
-          <ColHeader label="Client ▾"      sortKey="client"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Projet ▾"      sortKey="projet"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Référence"     sortKey="offer"      sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Statut"        sortKey="statut"     sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Montant HT ▾"  sortKey="montant_ht" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Avancement ▾"  sortKey="avancement" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Expir. ▾"      sortKey="expiration" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-        </div>
-
-        <div style={{maxHeight:520,overflowY:"auto"}}>
-          {filtered.length===0
-            ?<div style={{padding:"40px 20px",textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun résultat pour ces filtres</div>
-            :filtered.map((o,idx)=>{
-              const d=diffDays(o.date_validite);
-              const expColor=d===null?T.textSoft:d<=0?T.rose:d<=7?T.amber:T.textSoft;
-              const av=Math.round((o._project_attached?.avancement||0)*100);
-              const avColor=av>=80?T.sage:av>=40?T.teal:T.textSoft;
-              return (
-                <div key={o.id} style={{display:"grid",gridTemplateColumns:"150px 1fr 150px 165px 105px 130px 72px",gap:8,padding:"11px 20px",borderBottom:`1px solid ${T.border}`,alignItems:"center",background:o.is_archived?`${T.amber}08`:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s",opacity:o.is_archived?0.7:1}}
-                  onMouseEnter={e=>e.currentTarget.style.background=T.indigoL}
-                  onMouseLeave={e=>e.currentTarget.style.background=o.is_archived?`${T.amber}08`:idx%2===0?T.card:T.cardAlt}>
-                  <span style={{fontSize:12,fontWeight:700,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o._project_attached?._company_attached?.name||"—"}</span>
-                  <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o._project_attached?.name||"—"}</span>
-                  <span style={{fontSize:11,color:T.textSoft,fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{o.offer_number}</span>
-                  <Badge label={o.os_devis_statut||"—"}/>
-                  <span style={{fontSize:13,fontWeight:700,color:T.text,textAlign:"right"}}>{o.montant_ht>0?fmt(o.montant_ht):"0 €"}</span>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <div style={{flex:1,height:5,background:T.border,borderRadius:3}}>
-                      <div style={{height:5,background:avColor,width:`${av}%`,borderRadius:3}}/>
-                    </div>
-                    <span style={{fontSize:10,color:avColor,fontWeight:700,width:28,flexShrink:0}}>{av}%</span>
-                  </div>
-                  <span style={{fontSize:11,fontWeight:700,color:expColor,textAlign:"right"}}>{d===null?"—":d<=0?"Expiré":`J-${d}`}</span>
-                </div>
-              );
-            })
-          }
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"150px 1fr 150px 165px 105px 130px 72px",gap:8,padding:"12px 20px",borderTop:`2px solid ${T.border}`,background:T.cardAlt}}>
-          <span style={{gridColumn:"1/4",fontSize:12,color:T.textMed}}>{hasFilters?`Filtré · ${filtered.length} devis`:""}</span>
-          <span style={{fontSize:11,color:T.textSoft,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.05em"}}>Total HT</span>
-          <span style={{fontSize:15,fontWeight:800,color:T.indigo,textAlign:"right"}}>{fmt(totalFiltre)}</span>
-          <span/><span/>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── ONGLET INTERVENTIONS ─────────────────────────────────────────────────────
-function TabInterventions({interventions,projects,selectedCompany,onSelectCompany}){
-  const [periodFrom,setPeriodFrom]=useState("");
-  const [periodTo,setPeriodTo]=useState("");
-  const [search,setSearch]=useState("");
-  const [filterStatuts,setFilterStatuts]=useState([]);
-  const [filterTypes,setFilterTypes]=useState([]);
-  const [dateFrom,setDateFrom]=useState("");
-  const [dateTo,setDateTo]=useState("");
-  const [sortBy,setSortBy]=useState("date");
-  const [sortDir,setSortDir]=useState("desc");
-  const handleSort=k=>{if(sortBy===k)setSortDir(d=>d==="asc"?"desc":"asc");else{setSortBy(k);setSortDir("desc");}};
-  const allTypes=useMemo(()=>[...new Set(interventions.map(i=>i.OS_prestations_type).filter(Boolean))],[interventions]);
-  const intervInPeriod=useMemo(()=>interventions.filter(i=>inRange(i.date,periodFrom,periodTo)),[interventions,periodFrom,periodTo]);
-
-  const filtered=useMemo(()=>{
-    let rows=interventions;
-    if(search.trim()){const q=search.toLowerCase();rows=rows.filter(i=>i.name?.toLowerCase().includes(q)||i._project_attached?.name?.toLowerCase().includes(q)||i._project_attached?._company_attached?.name?.toLowerCase().includes(q));}
-    if(filterStatuts.length)rows=rows.filter(i=>filterStatuts.includes(i.intervention_status));
-    if(filterTypes.length)rows=rows.filter(i=>filterTypes.includes(i.OS_prestations_type));
-    if(dateFrom)rows=rows.filter(i=>i.date&&i.date>=dateFrom);
-    if(dateTo)rows=rows.filter(i=>i.date&&i.date<=dateTo);
-    if(selectedCompany)rows=rows.filter(i=>i._project_attached?._company_attached?.id===selectedCompany);
-    return [...rows].sort((a,b)=>{
-      let va,vb;
-      if(sortBy==="client"){va=a._project_attached?._company_attached?.name||"";vb=b._project_attached?._company_attached?.name||"";}
-      else if(sortBy==="projet"){va=a._project_attached?.name||"";vb=b._project_attached?.name||"";}
-      else if(sortBy==="type"){va=a.OS_prestations_type||"";vb=b.OS_prestations_type||"";}
-      else{va=new Date(a.date||0);vb=new Date(b.date||0);}
-      if(va<vb)return sortDir==="asc"?-1:1;if(va>vb)return sortDir==="asc"?1:-1;return 0;
-    });
-  },[interventions,search,filterStatuts,filterTypes,dateFrom,dateTo,selectedCompany,sortBy,sortDir]);
-
-  const terminees=intervInPeriod.filter(i=>i.intervention_status==="Terminé");
-  const enCours=intervInPeriod.filter(i=>i.intervention_status==="En cours");
-  const planifiees=intervInPeriod.filter(i=>i.intervention_status==="Planifié");
-  const total=intervInPeriod.length||1;
-
-  const byType={};intervInPeriod.forEach(i=>{const t=i.OS_prestations_type||"Autre";byType[t]=(byType[t]||0)+1;});
-  const typeData=Object.entries(byType).sort((a,b)=>b[1]-a[1]).map(([name,value])=>({name,value}));
-
-  const byRegion={};intervInPeriod.forEach(i=>{const r=i.address?.city||"—";byRegion[r]=(byRegion[r]||0)+1;});
-  const regionData=Object.entries(byRegion).sort((a,b)=>b[1]-a[1]).slice(0,12);
-  const maxRegion=regionData[0]?.[1]||1;
-
-  const byClientI={};
-  intervInPeriod.forEach(i=>{const c=i._project_attached?._company_attached;if(!c)return;if(!byClientI[c.id])byClientI[c.id]={id:c.id,name:c.name,count:0};byClientI[c.id].count++;});
-  const topClientsI=Object.values(byClientI).sort((a,b)=>b.count-a.count).slice(0,5);
-  const maxClientI=topClientsI[0]?.count||1;
-
-  const moisLabels=["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"];
-  const byMois={};
-  interventions.forEach(i=>{if(!i.date)return;const m=new Date(i.date).getMonth();byMois[m]=(byMois[m]||0)+1;});
-  const moisData=Array.from({length:12},(_,m)=>({mois:moisLabels[m],count:byMois[m]||0}));
-
-  const hasFilters=search||filterStatuts.length||filterTypes.length||dateFrom||dateTo||selectedCompany;
-  const hasPeriod=periodFrom||periodTo;
-
-  return (
-    <div>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:18,padding:"10px 16px",background:T.card,border:`1px solid ${T.border}`,borderRadius:10,boxShadow:"0 1px 4px rgba(0,0,0,0.04)"}}>
-        <span style={{fontSize:12,color:T.textMed,fontWeight:700}}>📅 Période KPIs</span>
-        <DateRange dateFrom={periodFrom} dateTo={periodTo} onChange={(f,t)=>{setPeriodFrom(f);setPeriodTo(t);}}/>
-        <span style={{fontSize:12,color:hasPeriod?T.teal:T.textSoft}}>{hasPeriod?`${intervInPeriod.length} interventions dans la période`:"Toutes les périodes"}</span>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:20}}>
-        <KpiCard label="Total interventions" value={intervInPeriod.length}                  sub="dans la période"      color={T.teal}   pct={100}/>
-        <KpiCard label="Terminées"           value={terminees.length}                       sub={`${Math.round(terminees.length/total*100)}% du total`} color={T.sage} pct={terminees.length/total*100}/>
-        <KpiCard label="En cours"            value={enCours.length}                         sub="en progression"       color={T.amber}  pct={enCours.length/total*100}/>
-        <KpiCard label="Planifiées"          value={planifiees.length}                      sub="à venir"              color={T.violet} pct={planifiees.length/total*100}/>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 340px",gap:14,marginBottom:20}}>
-        <Card title="Interventions par mois" badge={<PeriodTag on={hasPeriod}/>}>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={moisData} margin={{top:4,right:4,left:0,bottom:4}}>
-              <XAxis dataKey="mois" tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fontSize:10,fill:T.textSoft,fontFamily:"inherit"}} axisLine={false} tickLine={false} width={22} allowDecimals={false}/>
-              <Tooltip contentStyle={{background:T.card,border:`1px solid ${T.border}`,fontSize:12}}/>
-              <Bar dataKey="count" name="Interventions" fill={T.teal} radius={[4,4,0,0]} opacity={0.85}/>
-            </BarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Zones d'activité">
-          <div style={{maxHeight:120,overflowY:"auto",marginBottom:12}}>
-            {regionData.map(([r,v],i)=>(
-              <div key={r} style={{marginBottom:7}}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                  <span style={{color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:155}}>{r}</span>
-                  <span style={{color:T.textSoft,flexShrink:0,marginLeft:6,fontWeight:600}}>{v}</span>
-                </div>
-                <div style={{height:4,background:T.border,borderRadius:2}}>
-                  <div style={{height:4,background:i===0?T.teal:T.border,width:`${(v/maxRegion)*100}%`,borderRadius:2}}/>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{paddingTop:10,borderTop:`1px solid ${T.border}`}}>
-            <div style={{fontSize:10,color:T.textSoft,fontWeight:700,textTransform:"uppercase",marginBottom:8}}>Top clients</div>
-            {topClientsI.map((c,i)=>(
-              <div key={c.id} style={{marginBottom:7,cursor:"pointer"}} onClick={()=>onSelectCompany(selectedCompany===c.id?null:c.id)}>
-                <div style={{display:"flex",justifyContent:"space-between",fontSize:12,marginBottom:3}}>
-                  <span style={{color:selectedCompany===c.id?T.teal:T.textMed,fontWeight:selectedCompany===c.id?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:155}}>{c.name}</span>
-                  <span style={{color:T.textSoft,flexShrink:0,marginLeft:6}}>{c.count}</span>
-                </div>
-                <div style={{height:4,background:T.border,borderRadius:2}}>
-                  <div style={{height:4,background:selectedCompany===c.id?T.teal:i===0?T.teal:T.border,width:`${(c.count/maxClientI)*100}%`,borderRadius:2,transition:"all 0.4s"}}/>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      <div style={{background:T.card,border:`1px solid ${T.border}`,borderRadius:12,overflow:"hidden",boxShadow:"0 2px 6px rgba(0,0,0,0.04)"}}>
-        <div style={{padding:"16px 20px",borderBottom:`1px solid ${T.border}`,display:"flex",alignItems:"center",gap:10,flexWrap:"wrap",background:T.cardAlt}}>
-          <SearchInput value={search} onChange={setSearch} placeholder="Intervention, projet, entreprise…"/>
-          <MultiSelect label="Statut" options={STATUT_INTERV} selected={filterStatuts} onChange={setFilterStatuts} colorMap={S_COLOR}/>
-          <MultiSelect label="Type" options={allTypes} selected={filterTypes} onChange={setFilterTypes}/>
-          <DateRange dateFrom={dateFrom} dateTo={dateTo} onChange={(f,t)=>{setDateFrom(f);setDateTo(t);}}/>
-          {hasFilters&&<button onClick={()=>{setSearch("");setFilterStatuts([]);setFilterTypes([]);setDateFrom("");setDateTo("");onSelectCompany(null);}} style={{cursor:"pointer",padding:"7px 13px",background:T.tealL,border:`1px solid ${T.teal}44`,borderRadius:8,color:T.teal,fontSize:12,fontWeight:600}}>Réinitialiser</button>}
-          <span style={{marginLeft:"auto",fontSize:12,color:T.textSoft,fontWeight:600}}>{filtered.length} résultat{filtered.length>1?"s":""}</span>
-        </div>
-
-        <div style={{display:"grid",gridTemplateColumns:"150px 180px 1fr 140px 95px 120px",gap:8,padding:"10px 20px",background:T.cardAlt,borderBottom:`2px solid ${T.border}`}}>
-          <ColHeader label="Client"       sortKey="client" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Projet"       sortKey="projet" sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Intervention" sortKey="name"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Type"         sortKey="type"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <ColHeader label="Date"         sortKey="date"   sortBy={sortBy} sortDir={sortDir} onSort={handleSort}/>
-          <span style={{fontSize:11,color:T.textSoft,fontWeight:600}}>Statut</span>
-        </div>
-
-        <div style={{maxHeight:520,overflowY:"auto"}}>
-          {filtered.length===0
-            ?<div style={{padding:"40px 20px",textAlign:"center",color:T.textSoft,fontSize:13}}>Aucun résultat pour ces filtres</div>
-            :filtered.map((i,idx)=>(
-              <div key={i.id} style={{display:"grid",gridTemplateColumns:"150px 180px 1fr 140px 95px 120px",gap:8,padding:"11px 20px",borderBottom:`1px solid ${T.border}`,alignItems:"center",background:idx%2===0?T.card:T.cardAlt,transition:"background 0.1s"}}
-                onMouseEnter={e=>e.currentTarget.style.background=T.tealL}
-                onMouseLeave={e=>e.currentTarget.style.background=idx%2===0?T.card:T.cardAlt}>
-                <span style={{fontSize:12,color:T.text,fontWeight:700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{i._project_attached?._company_attached?.name}</span>
-                <span style={{fontSize:12,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{i._project_attached?.name}</span>
-                <span style={{fontSize:12,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{i.name}</span>
-                <span style={{fontSize:11,color:T.textMed,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{i.OS_prestations_type}</span>
-                <span style={{fontSize:12,color:T.textMed}}>{fmtDate(i.date)}</span>
-                <Badge label={i.intervention_status||"—"}/>
-              </div>
-            ))
-          }
-        </div>
-        <div style={{padding:"10px 20px",fontSize:12,color:T.textSoft,borderTop:`1px solid ${T.border}`,background:T.cardAlt}}>
-          {filtered.length} intervention{filtered.length>1?"s":""} affichée{filtered.length>1?"s":""}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ─── AUTOCOMPLETE SEARCH ──────────────────────────────────────────────────────
 function CompanySearch({companies,onSelect}){
@@ -906,10 +395,10 @@ export default function QualidaDashboard(){
         <Route path="/" element={
           <div style={{padding:"24px 28px",maxWidth:1440,margin:"0 auto"}}>
             {tab==="facturation"
-              ?<SuiviFacturable projects={data.projects}/>
-              :tab==="devis"
-                ?<TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
-                :<TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+              ? <SuiviFacturable projects={data.projects}/>
+              : tab==="devis"
+                ? <TabDevis offers={data.offers} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
+                : <TabInterventions interventions={data.interventions} projects={data.projects} selectedCompany={selectedCompany} onSelectCompany={setSelectedCompany}/>
             }
           </div>
         }/>
